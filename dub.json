@@ -7,8 +7,20 @@
 	"targetPath": "bin",
 	"targetType": "library",
 	"dependencies": {
-		"derelict-util" : ">=1.0.0",
-		"xlib-d": "~>0.1.1",
-		"xcb-d": "~>2.1.0+1.11.1"
-	}
+		"derelict-util" : "~>2.0.6",
+		"xlib-d": { "version": "~>0.1.1", "optional": true },
+		"xcb-d" : { "version": "~>2.1.0+1.11.1", "optional": true }
+	},
+	"subPackages": [
+		{
+			"name"        : "example",
+			"targetType"  : "executable",
+			"sourcePaths" : ["./example"],
+			"targetPath"  : "bin",
+			"dependencies": {
+				"derelict-vulkan": "*",
+				"derelict-sdl2": "~>2.0.0"
+			}
+		}
+	]
 }
