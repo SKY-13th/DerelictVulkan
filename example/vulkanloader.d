@@ -7,7 +7,12 @@ import std.algorithm.iteration
      , std.stdio
      , std.array
      , std.meta;
+import std.functional : memoize;
 import derelict.sdl2.sdl;
+
+static this() {
+    DerelictVulkan.load();
+}
 
 alias defaultAppName = Alias!"Hello Vulkan!";
 immutable VkApplicationInfo defaultAppInfo = {
@@ -19,6 +24,7 @@ immutable VkApplicationInfo defaultAppInfo = {
 
 struct VulkanInstanceHandle {
     VkResult   status = VkResult.VK_NOT_READY;
+    alias instance this;
     VkInstance instance;
 }
 
@@ -44,26 +50,41 @@ VulkanInstanceHandle
     return handle;
 }
 
+
+template enumerate(alias enumerator) {
+    auto get(ListType)() {
+        uint count;
+        enumerator( &count, null );
+        auto availableLayers = new ListType[count];
+        return !count ? availableLayers : () {
+            enumerator( &count, availableLayers.ptr );
+            return availableLayers;
+        } ();
+    }
+}
+
 auto availableValidationLayersList() {
-    uint count;
-    vkEnumerateInstanceLayerProperties( &count, null );
-    auto availableLayers = new VkLayerProperties[count];
-    return !count ? availableLayers : () {
-        vkEnumerateInstanceLayerProperties( &count, availableLayers.ptr );
-        return availableLayers;
-    } ();
+    alias validationLayers = 
+        enumerate!vkEnumerateInstanceLayerProperties
+        .get!VkLayerProperties;
+    return memoize!validationLayers;
 }
 
 auto availableInstanceExtentionsList(in string layerName = "") {
-    uint count;
-    const auto name = layerName.length ? toStringz(layerName) : null;
-    vkEnumerateInstanceExtensionProperties(name, &count, null);
+    const auto
+        name = layerName.length
+             ? toStringz(layerName) 
+             : null;
+    alias extentions = (count, data) =>
+        vkEnumerateInstanceExtensionProperties(name, count, data);
+    alias extentionsList =
+        enumerate!extentions
+        .get!VkExtensionProperties;
+    return memoize!extentionsList;
+}
 
-    auto instanceExtensions = new VkExtensionProperties[count];
-    return !count ? instanceExtensions : () {
-        vkEnumerateInstanceExtensionProperties(name, &count, instanceExtensions.ptr);
-        return instanceExtensions;
-    } ();
+auto physicalDevices(VkInstance instance) {
+
 }
 
 //////////////////////////////////////////////////////////////

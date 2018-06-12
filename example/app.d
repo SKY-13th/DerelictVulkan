@@ -30,17 +30,16 @@ void main() {
         , "VK_LAYER_RENDERDOC_Capture" ]
         .intersect(availableLayers);
 
-    auto sdl    = new SDLLoader(defaultAppName, width, height);
-    auto vulkan = defaultAppInfo.initVulkan(extentions, layers);
-
+    auto vulkan      = defaultAppInfo.initVulkan(extentions, layers);
     writeln("Vulkan status: ", vulkan.status);
+    auto sdlWindow   = defaultAppName.createWindow;
+    auto sdlRenderer = sdlWindow.createRenderer;
+    auto sdlInfo     = sdlWindow.info;
 
-    sdl.loop((event) {
+    (event) {
         // TODO: some stuff
-    });
-}
+    }.loop;
 
-static this() {
-    DerelictSDL2  .load();
-    DerelictVulkan.load();
+    vkDestroyInstance(vulkan, null);
+    SDL_DestroyWindow(sdlWindow);
 }
