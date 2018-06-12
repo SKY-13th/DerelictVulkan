@@ -7,7 +7,6 @@ import std.algorithm.iteration
      , std.stdio
      , std.array
      , std.meta;
-import std.functional : memoize;
 import derelict.sdl2.sdl;
 
 static this() {
@@ -64,27 +63,35 @@ template enumerate(alias enumerator) {
 }
 
 auto availableValidationLayersList() {
-    alias validationLayers = 
-        enumerate!vkEnumerateInstanceLayerProperties
-        .get!VkLayerProperties;
-    return memoize!validationLayers;
+    return enumerate!vkEnumerateInstanceLayerProperties
+          .get!VkLayerProperties;
 }
 
 auto availableInstanceExtentionsList(in string layerName = "") {
-    const auto
-        name = layerName.length
-             ? toStringz(layerName) 
-             : null;
+    const auto name = layerName.length
+                    ? toStringz(layerName)
+                    : null;
     alias extentions = (count, data) =>
         vkEnumerateInstanceExtensionProperties(name, count, data);
-    alias extentionsList =
-        enumerate!extentions
-        .get!VkExtensionProperties;
-    return memoize!extentionsList;
+    return enumerate!extentions.get!VkExtensionProperties;
 }
 
 auto physicalDevices(VkInstance instance) {
+    alias devices = (count, data) =>
+        vkEnumeratePhysicalDevices(instance, count, data);
+    return enumerate!devices.get!VkPhysicalDevice;
+}
 
+auto properties(VkPhysicalDevice device) {
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(device, &properties);
+    return properties;
+}
+
+auto queueFamilyProperties(VkPhysicalDevice device) {
+    alias queues = (count, data) =>
+        vkGetPhysicalDeviceQueueFamilyProperties(device, count, data);
+    return enumerate!queues.get!VkQueueFamilyProperties;
 }
 
 //////////////////////////////////////////////////////////////

@@ -7,8 +7,9 @@ import std.string;
 import std.algorithm.iteration;
 
 void main() {
-    uint width  = 640
-       , height = 480;
+    auto sdlWindow   = defaultAppName.createWindow;
+    auto sdlRenderer = sdlWindow.createRenderer;
+    auto sdlInfo     = sdlWindow.info;
 
     const auto availableLayers     = availableValidationLayersList
         .map!(l => l.layerName).toStrArray;
@@ -30,15 +31,13 @@ void main() {
         , "VK_LAYER_RENDERDOC_Capture" ]
         .intersect(availableLayers);
 
-    auto vulkan      = defaultAppInfo.initVulkan(extentions, layers);
+
+    auto vulkan = defaultAppInfo.initVulkan(extentions, layers);
     writeln("Vulkan status: ", vulkan.status);
-    auto sdlWindow   = defaultAppName.createWindow;
-    auto sdlRenderer = sdlWindow.createRenderer;
-    auto sdlInfo     = sdlWindow.info;
 
     (event) {
         // TODO: some stuff
-    }.loop;
+    }.eventLoop;
 
     vkDestroyInstance(vulkan, null);
     SDL_DestroyWindow(sdlWindow);

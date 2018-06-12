@@ -50,7 +50,7 @@ auto info( SDL2Window window ) {
     return info;
 }
 
-void loop(void delegate(in SDL_Event event) cicle) {
+void eventLoop(void delegate(in SDL_Event event) cicle) {
     bool running = true;
     SDL_Event event;
     while(running)
