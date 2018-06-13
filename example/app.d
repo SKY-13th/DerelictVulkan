@@ -10,6 +10,10 @@ void main() {
     auto sdlWindow   = defaultAppName.createWindow;
     auto sdlRenderer = sdlWindow.createRenderer;
     auto sdlInfo     = sdlWindow.info;
+    scope(exit) {
+        SDL_DestroyRenderer(sdlRenderer);
+        SDL_DestroyWindow(sdlWindow);
+    }
 
     const auto availableLayers     = availableValidationLayers
         .map!(l => l.layerName).toStrArray;
@@ -33,19 +37,19 @@ void main() {
 
 
     auto vulkan      = defaultAppInfo.initVulkan(extentions,layers);
-    writeln("Vulkan status: ", vulkan.status);
     auto physDevice  = vulkan.physicalDevices[0];
     writeln("QueueFamilyProperties: ", physDevice.queueFamilyProperties);
     auto logicDevice = physDevice.createDevice;
-    writeln("Device status: ", logicDevice.status);
     auto surface     = vulkan.createSurface(sdlInfo);
-    writeln("Surface status: ", surface.status);
-    auto formats = physDevice.surfaceFormats(surface);
+    auto formats     = physDevice.surfaceFormats(surface);
     writeln("Surface formats: ", formats);
+    
+    scope(exit) {
+        vkDestroyDevice(logicDevice, null);
+        vkDestroyInstance(vulkan, null);
+    }
+
     // (event) {
     //     // TODO: some stuff
     // }.eventLoop;
-    vkDestroyDevice(logicDevice, null);
-    vkDestroyInstance(vulkan, null);
-    SDL_DestroyWindow(sdlWindow);
 }

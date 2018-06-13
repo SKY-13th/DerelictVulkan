@@ -63,6 +63,7 @@ auto initVulkan( in ref VkApplicationInfo appInfo
     };
     
     handle.status = vkCreateInstance(&instanceInfo, null, &handle.handle);
+    writeln("Vulkan status: ", handle.status);
     return handle;
 }
 
@@ -81,6 +82,7 @@ auto createDevice(VkPhysicalDevice physicalDevice) {
     };
     VulkanLogicalDevice handle;
     handle.status = vkCreateDevice(physicalDevice, &deviceInfo, null, &handle.handle);
+    writeln("Device status: ", handle.status);
     return handle;
 }
 
@@ -97,6 +99,7 @@ auto createSurface(VulkanInstance instance, SDL2WMInfo info) in {
     };
     VulkanSurface handle;
     handle.status = vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, null, &handle.handle);
+    writeln("Surface status: ", handle.status);
     return handle;
 }
 
