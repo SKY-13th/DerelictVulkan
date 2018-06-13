@@ -21,33 +21,15 @@ immutable VkApplicationInfo defaultAppInfo = {
     pEngineName:      defaultAppName.ptr,
 };
 
-struct VulkanInstanceHandle {
-    VkResult   status = VkResult.VK_NOT_READY;
-    alias instance this;
-    VkInstance instance;
+struct VulkanHandle(Handle) {
+    alias    handle this;
+    Handle   handle;
+    VkResult status = VkResult.VK_NOT_READY;
 }
 
-VulkanInstanceHandle
-    initVulkan( in ref VkApplicationInfo appInfo
-              , in string[] extentionsList
-              , in string[] layersList )
-{
-    writeln("Use layers: "    , layersList);
-    writeln("Use extentions: ", extentionsList);
-
-    VulkanInstanceHandle handle;
-    VkInstanceCreateInfo instanceInfo = {
-        sType: VkStructureType.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        pApplicationInfo:        &appInfo,
-        enabledLayerCount:       layersList.length.to!uint,
-        ppEnabledLayerNames:     layersList.toCStrArray.ptr,
-        enabledExtensionCount:   extentionsList.length.to!uint,
-        ppEnabledExtensionNames: extentionsList.toCStrArray.ptr
-    };
-    
-    handle.status = vkCreateInstance(&instanceInfo, null, &handle.instance);
-    return handle;
-}
+alias VulkanInstance      = VulkanHandle!VkInstance;
+alias VulkanLogicalDevice = VulkanHandle!VkDevice;
+alias VulkanSurface       = VulkanHandle!VkSurfaceKHR;
 
 alias physicalDevices           = enumerate!vkEnumeratePhysicalDevices;
 alias queueFamilyProperties     = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
@@ -60,6 +42,55 @@ auto properties(VkPhysicalDevice device) {
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(device, &properties);
     return properties;
+}
+
+auto initVulkan( in ref VkApplicationInfo appInfo
+               , in string[] extentionsList = []
+               , in string[] layersList     = [] )
+{
+    writeln("Use layers: "    , layersList);
+    writeln("Use extentions: ", extentionsList);
+
+    VulkanInstance handle;
+    VkInstanceCreateInfo instanceInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        pApplicationInfo:        &appInfo,
+        enabledLayerCount:       layersList.length.to!uint,
+        ppEnabledLayerNames:     layersList.toCStrArray.ptr,
+        enabledExtensionCount:   extentionsList.length.to!uint,
+        ppEnabledExtensionNames: extentionsList.toCStrArray.ptr
+    };
+    
+    handle.status = vkCreateInstance(&instanceInfo, null, &handle.handle);
+    return handle;
+}
+
+auto createDevice(VkPhysicalDevice physicalDevice) {
+    auto queuePriorities = [1.0f];
+    VkDeviceQueueCreateInfo deviceQueueInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        queueFamilyIndex: 0,
+        queueCount:       1,
+        pQueuePriorities: queuePriorities.ptr
+    };
+    VkDeviceCreateInfo deviceInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        queueCreateInfoCount: 1,
+        pQueueCreateInfos:    &deviceQueueInfo
+    };
+    VulkanLogicalDevice handle;
+    handle.status = vkCreateDevice(physicalDevice, &deviceInfo, null, &handle.handle);
+    return handle;
+}
+
+auto createSurface(VulkanInstance instance) in {
+    assert(VkResult.VK_SUCCESS == instance.status);
+} do {
+    VkWin32SurfaceCreateInfoKHR surfaceCreateInfo;
+surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+surfaceCreateInfo.hinstance = (HINSTANCE)platformHandle; // provided by the platform code
+surfaceCreateInfo.hwnd = (HWND)platformWindow;           // provided by the platform code
+VkResult result = vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, NULL, &surface);
 }
 
 //////////////////////////////////////////////////////////////

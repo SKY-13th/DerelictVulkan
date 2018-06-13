@@ -23,18 +23,21 @@ void main() {
         [ VK_KHR_SURFACE_EXTENSION_NAME
         , VK_KHR_WIN32_SURFACE_EXTENSION_NAME ]
         .intersect(availableExtentions);
-    const auto layers =
-        [ "VK_LAYER_LUNARG_standard_validation"
-        , "VK_LAYER_LUNARG_core_validation"
-        , "VK_LAYER_LUNARG_parameter_validation"
-        , "VK_LAYER_LUNARG_monitor"
-        , "VK_LAYER_RENDERDOC_Capture" ]
-        .intersect(availableLayers);
+    // const auto layers =
+    //     [ "VK_LAYER_LUNARG_standard_validation"
+    //     , "VK_LAYER_LUNARG_core_validation"
+    //     , "VK_LAYER_LUNARG_parameter_validation"
+    //     , "VK_LAYER_LUNARG_monitor"
+    //     , "VK_LAYER_RENDERDOC_Capture" ]
+    //     .intersect(availableLayers);
 
 
-    auto vulkan = defaultAppInfo.initVulkan(extentions, layers);
+    auto vulkan      = defaultAppInfo.initVulkan(extentions);
     writeln("Vulkan status: ", vulkan.status);
-    writeln(vulkan.physicalDevices);
+    auto physDevice  = vulkan.physicalDevices[0];
+    auto logicDevice = physDevice.createDevice;
+    writeln("Device status: ", logicDevice.status);
+
     (event) {
         // TODO: some stuff
     }.eventLoop;
