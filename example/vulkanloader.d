@@ -49,37 +49,11 @@ VulkanInstanceHandle
     return handle;
 }
 
-
-template enumerate(alias enumerator) {
-    auto get(ListType)() {
-        uint count;
-        enumerator( &count, null );
-        auto availableLayers = new ListType[count];
-        return !count ? availableLayers : () {
-            enumerator( &count, availableLayers.ptr );
-            return availableLayers;
-        } ();
-    }
-}
-
-auto availableValidationLayersList() {
-    return enumerate!vkEnumerateInstanceLayerProperties
-          .get!VkLayerProperties;
-}
-
-auto availableInstanceExtentionsList(in string layerName = "") {
-    const auto name = layerName.length
-                    ? toStringz(layerName)
-                    : null;
-    alias extentions = (count, data) =>
-        vkEnumerateInstanceExtensionProperties(name, count, data);
-    return enumerate!extentions.get!VkExtensionProperties;
-}
-
-auto physicalDevices(VkInstance instance) {
-    alias devices = (count, data) =>
-        vkEnumeratePhysicalDevices(instance, count, data);
-    return enumerate!devices.get!VkPhysicalDevice;
+alias physicalDevices           = enumerate!vkEnumeratePhysicalDevices;
+alias queueFamilyProperties     = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
+alias availableValidationLayers = enumerate!vkEnumerateInstanceLayerProperties;
+auto  availableInstanceExtentions(in string layerName = "") {
+    return layerName.toStringz.enumerate!vkEnumerateInstanceExtensionProperties;
 }
 
 auto properties(VkPhysicalDevice device) {
@@ -88,15 +62,26 @@ auto properties(VkPhysicalDevice device) {
     return properties;
 }
 
-auto queueFamilyProperties(VkPhysicalDevice device) {
-    alias queues = (count, data) =>
-        vkGetPhysicalDeviceQueueFamilyProperties(device, count, data);
-    return enumerate!queues.get!VkQueueFamilyProperties;
-}
-
 //////////////////////////////////////////////////////////////
 import std.range.primitives
      , std.traits;
+
+template enumerate(alias enumerator) {
+    import std.traits;
+    static assert( isCallable!enumerator, "Enumerator is not callable!");
+    static assert( Parameters!enumerator.length >= 2, "Enumerator should match patern: `enumarator(..., uint* count, Enumerable*)`!");
+    alias Enumerable = PointerTarget!(Parameters!enumerator[$-1]);
+
+    auto enumerate(A...)(A a) {
+        uint count;
+        enumerator( a, &count, null );
+        auto list = new Enumerable[count];
+        return !count ? list : () {
+            enumerator( a, &count, list.ptr );
+            return list;
+        } ();
+    }
+}
 
 auto intersect( in string[] left, in string[] right ) pure {
     import std.algorithm.searching : canFind;

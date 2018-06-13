@@ -11,9 +11,9 @@ void main() {
     auto sdlRenderer = sdlWindow.createRenderer;
     auto sdlInfo     = sdlWindow.info;
 
-    const auto availableLayers     = availableValidationLayersList
+    const auto availableLayers     = availableValidationLayers
         .map!(l => l.layerName).toStrArray;
-    const auto availableExtentions = availableInstanceExtentionsList
+    const auto availableExtentions = availableInstanceExtentions
         .map!(e => e.extensionName).toStrArray;
     writeln("Available layers:\n"    , availableLayers);
     writeln("Available extentions:\n", availableExtentions);
@@ -34,7 +34,7 @@ void main() {
 
     auto vulkan = defaultAppInfo.initVulkan(extentions, layers);
     writeln("Vulkan status: ", vulkan.status);
-
+    writeln(vulkan.physicalDevices);
     (event) {
         // TODO: some stuff
     }.eventLoop;
