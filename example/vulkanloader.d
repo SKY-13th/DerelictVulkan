@@ -31,6 +31,7 @@ alias VulkanInstance      = VulkanHandle!VkInstance;
 alias VulkanLogicalDevice = VulkanHandle!VkDevice;
 alias VulkanSurface       = VulkanHandle!VkSurfaceKHR;
 
+alias surfaceFormats            = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
 alias physicalDevices           = enumerate!vkEnumeratePhysicalDevices;
 alias queueFamilyProperties     = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
 alias availableValidationLayers = enumerate!vkEnumerateInstanceLayerProperties;

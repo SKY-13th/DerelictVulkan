@@ -23,27 +23,29 @@ void main() {
         [ VK_KHR_SURFACE_EXTENSION_NAME
         , VK_KHR_WIN32_SURFACE_EXTENSION_NAME ]
         .intersect(availableExtentions);
-    // const auto layers =
-    //     [ "VK_LAYER_LUNARG_standard_validation"
-    //     , "VK_LAYER_LUNARG_core_validation"
-    //     , "VK_LAYER_LUNARG_parameter_validation"
-    //     , "VK_LAYER_LUNARG_monitor"
-    //     , "VK_LAYER_RENDERDOC_Capture" ]
-    //     .intersect(availableLayers);
+    const auto layers =
+        [ "VK_LAYER_LUNARG_standard_validation"
+        , "VK_LAYER_LUNARG_core_validation"
+        , "VK_LAYER_LUNARG_parameter_validation"
+        , "VK_LAYER_LUNARG_monitor"
+        , "VK_LAYER_RENDERDOC_Capture" ]
+        .intersect(availableLayers);
 
 
-    auto vulkan      = defaultAppInfo.initVulkan(extentions);
+    auto vulkan      = defaultAppInfo.initVulkan(extentions,layers);
     writeln("Vulkan status: ", vulkan.status);
     auto physDevice  = vulkan.physicalDevices[0];
+    writeln("QueueFamilyProperties: ", physDevice.queueFamilyProperties);
     auto logicDevice = physDevice.createDevice;
     writeln("Device status: ", logicDevice.status);
     auto surface     = vulkan.createSurface(sdlInfo);
     writeln("Surface status: ", surface.status);
-
-    (event) {
-        // TODO: some stuff
-    }.eventLoop;
-
+    auto formats = physDevice.surfaceFormats(surface);
+    writeln("Surface formats: ", formats);
+    // (event) {
+    //     // TODO: some stuff
+    // }.eventLoop;
+    vkDestroyDevice(logicDevice, null);
     vkDestroyInstance(vulkan, null);
     SDL_DestroyWindow(sdlWindow);
 }
