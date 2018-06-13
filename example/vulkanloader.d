@@ -7,7 +7,7 @@ import std.algorithm.iteration
      , std.stdio
      , std.array
      , std.meta;
-import derelict.sdl2.sdl;
+import sdlloader;
 
 static this() {
     DerelictVulkan.load();
@@ -83,14 +83,20 @@ auto createDevice(VkPhysicalDevice physicalDevice) {
     return handle;
 }
 
-auto createSurface(VulkanInstance instance) in {
+auto createSurface(VulkanInstance instance, SDL2WMInfo info) in {
     assert(VkResult.VK_SUCCESS == instance.status);
+    assert(info.isValid);
+} out (result) {
+    assert(VkResult.VK_SUCCESS == result.status);
 } do {
-    VkWin32SurfaceCreateInfoKHR surfaceCreateInfo;
-surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-surfaceCreateInfo.hinstance = (HINSTANCE)platformHandle; // provided by the platform code
-surfaceCreateInfo.hwnd = (HWND)platformWindow;           // provided by the platform code
-VkResult result = vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, NULL, &surface);
+    VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+        hwnd:      info.info.win.window,
+        hinstance: info.info.win.hinstance
+    };
+    VulkanSurface handle;
+    handle.status = vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, null, &handle.handle);
+    return handle;
 }
 
 //////////////////////////////////////////////////////////////

@@ -15,9 +15,9 @@ struct SDL2Renderer {
 }
 
 struct SDL2WMInfo {
-    alias info this;
+    alias data this;
+    SDL_SysWMinfo data;
     bool          isValid = false;
-    SDL_SysWMinfo info;
 }
 
 auto createWindow( in string        appName
@@ -45,8 +45,8 @@ auto createRenderer( SDL2Window        window
 
 auto info( SDL2Window window ) {
     SDL2WMInfo info;
-    SDL_VERSION(&info.info.version_);
-    info.isValid = SDL_GetWindowWMInfo(window, &info.info).to!bool;
+    SDL_VERSION(&info.version_);
+    info.isValid = SDL_GetWindowWMInfo(window, &info.data).to!bool;
     return info;
 }
 

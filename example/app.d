@@ -37,6 +37,8 @@ void main() {
     auto physDevice  = vulkan.physicalDevices[0];
     auto logicDevice = physDevice.createDevice;
     writeln("Device status: ", logicDevice.status);
+    auto surface     = vulkan.createSurface(sdlInfo);
+    writeln("Surface status: ", surface.status);
 
     (event) {
         // TODO: some stuff
