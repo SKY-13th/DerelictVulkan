@@ -56,6 +56,7 @@ void main() {
            , "\nPresentation:\n", presentation );
 
     auto swapchain = logicDevice.createSwapchain(surface);
+    auto images    = logicDevice.swapchainImages(swapchain);
 
     scope(exit) {
         vkDestroySwapchainKHR(logicDevice, swapchain, null);

@@ -47,9 +47,9 @@ alias queueFamilyProperties       = enumerate!vkGetPhysicalDeviceQueueFamilyProp
 alias availableExtentions         = enumerate!vkEnumerateDeviceExtensionProperties;
 alias availableValidationLayers   = enumerate!vkEnumerateInstanceLayerProperties;
 alias availableInstanceExtentions = enumerate!vkEnumerateInstanceExtensionProperties;
+alias swapchainImages             = enumerate!vkGetSwapchainImagesKHR;
 
 alias surfaceCapabilities = create!vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
-
 
 auto properties(VkPhysicalDevice device) {
     VkPhysicalDeviceProperties properties;
@@ -134,12 +134,18 @@ import std.range.primitives
      , std.traits;
 
 template create(alias creator) {
+    static assert( isCallable!creator, "Creator is not callable!" );
+    static assert( Parameters!creator.length >= 1
+                 , "Creator should match patern: `creator(..., Target*)`!" );
     alias Target = PointerTarget!(Parameters!creator[$-1]);
-    auto create(A...)(A a) out(result) {
+    
+    auto create(Args...)(Args args) 
+    if(__traits(compiles, creator(args, null)))
+    out(result) {
         assert(result);
     } do {
         VulkanHandle!Target target;
-        target.status = creator(a, &target.handle);
+        target.status = creator(args, &target.handle);
         writeln("Create `", Target.stringof, "`: ", target.status);
         return target;
     }
@@ -147,15 +153,18 @@ template create(alias creator) {
 
 template enumerate(alias enumerator) {
     static assert( isCallable!enumerator, "Enumerator is not callable!");
-    static assert( Parameters!enumerator.length >= 2, "Enumerator should match patern: `enumarator(..., uint* count, Enumerable*)`!");
+    static assert( Parameters!enumerator.length >= 2
+                 , "Enumerator should match patern: `enumarator(..., uint* count, Enumerable*)`!");
     alias Enumerable = PointerTarget!(Parameters!enumerator[$-1]);
 
-    auto enumerate(A...)(A a) {
+    auto enumerate(Args...)(Args args)
+    if(__traits(compiles, enumerator(args, null, null)))
+    {
         uint count;
-        enumerator( a, &count, null );
+        enumerator( args, &count, null );
         auto list = new Enumerable[count];
         return !count ? list : () {
-            enumerator( a, &count, list.ptr );
+            enumerator( args, &count, list.ptr );
             return list;
         } ();
     }
@@ -167,13 +176,13 @@ auto intersect( in string[] left, in string[] right ) pure {
 }
 
 auto toCStrArray(Range)(Range data) pure
-    if (isInputRange!(Unqual!Range))
+if (isInputRange!(Unqual!Range))
 {
     return data.map!(a => toStringz(a)).array;
 }
 
 auto toStrArray(Range)(Range data) pure 
-    if (isInputRange!(Unqual!Range))
+if (isInputRange!(Unqual!Range))
 {
     return data.map!(a => fromStringz(a.ptr).idup).array;
 }
