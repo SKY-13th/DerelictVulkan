@@ -147,6 +147,17 @@ auto createImageView(VulkanLogicalDevice device, VkImage image) in {
     return device.create!vkCreateImageView(&createInfo, null);
 }
 
+auto createShaderModule(VulkanLogicalDevice device, string path) {
+    import std.file : read;
+    const auto data = read(path);
+    VkShaderModuleCreateInfo createInfo = {
+        sType:    VkStructureType.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        codeSize: data.length.to!uint,
+        pCode:    cast(const(uint)*) data.ptr
+    };
+    return device.create!vkCreateShaderModule(&createInfo, null);
+}
+
 //////////////////////////////////////////////////////////////
 import std.range.primitives
      , std.traits;

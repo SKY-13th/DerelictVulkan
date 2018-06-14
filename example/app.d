@@ -58,8 +58,22 @@ void main() {
     auto swapchain  = logicDevice.createSwapchain(surface);
     auto images     = logicDevice.swapchainImages(swapchain);
     auto imageViews = images.map!(i => logicDevice.createImageView(i)).array;
+    
+    auto vertModule = logicDevice.createShaderModule("./example/shaders/bin/vert.spv");
+    auto fragModule = logicDevice.createShaderModule("./example/shaders/bin/frag.spv");
+
+    VkPipelineShaderStageCreateInfo[2] shaderStages = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        pName: "main".toStringz
+    };
+    shaderStages[0].stage  = VkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT;
+    shaderStages[1].stage  = VkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderStages[0].module = vertModule;
+    shaderStages[1].module = fragModule;
 
     scope(exit) {
+        vkDestroyShaderModule(logicDevice, vertModule, null);
+        vkDestroyShaderModule(logicDevice, fragModule, null);
         foreach(view; imageViews) {
             vkDestroyImageView(logicDevice, view, null);
         }
