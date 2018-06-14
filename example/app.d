@@ -55,10 +55,14 @@ void main() {
            , "\nCapabilities:\n", capabilities
            , "\nPresentation:\n", presentation );
 
-    auto swapchain = logicDevice.createSwapchain(surface);
-    auto images    = logicDevice.swapchainImages(swapchain);
+    auto swapchain  = logicDevice.createSwapchain(surface);
+    auto images     = logicDevice.swapchainImages(swapchain);
+    auto imageViews = images.map!(i => logicDevice.createImageView(i)).array;
 
     scope(exit) {
+        foreach(view; imageViews) {
+            vkDestroyImageView(logicDevice, view, null);
+        }
         vkDestroySwapchainKHR(logicDevice, swapchain, null);
         vkDestroyDevice(logicDevice, null);
         vkDestroyInstance(vulkan, null);

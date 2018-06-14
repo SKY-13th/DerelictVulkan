@@ -129,6 +129,24 @@ auto createSwapchain(VulkanLogicalDevice device, VulkanSurface surface) in {
     return device.create!vkCreateSwapchainKHR(&createInfo, null);
 }
 
+auto createImageView(VulkanLogicalDevice device, VkImage image) in {
+    assert(device);
+    assert(image);
+} do {
+    VkImageViewCreateInfo createInfo = {
+        sType:    VkStructureType.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        image:    image,
+        format:   VkFormat.VK_FORMAT_B8G8R8A8_UNORM,
+        viewType: VkImageViewType.VK_IMAGE_VIEW_TYPE_2D,
+        subresourceRange: {
+            aspectMask: VkImageAspectFlagBits.VK_IMAGE_ASPECT_COLOR_BIT,
+            levelCount: 1,
+            layerCount: 1
+        }
+    };
+    return device.create!vkCreateImageView(&createInfo, null);
+}
+
 //////////////////////////////////////////////////////////////
 import std.range.primitives
      , std.traits;
