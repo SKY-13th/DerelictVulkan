@@ -17,7 +17,7 @@ void main() {
 
     const auto availableLayers     = availableValidationLayers
         .map!(l => l.layerName).toStrArray;
-    const auto availableExtentions = availableInstanceExtentions
+    const auto availableExtentions = availableInstanceExtentions(null)
         .map!(e => e.extensionName).toStrArray;
     writeln("Available layers:\n"    , availableLayers);
     writeln("Available extentions:\n", availableExtentions);
@@ -28,23 +28,37 @@ void main() {
         , VK_KHR_WIN32_SURFACE_EXTENSION_NAME ]
         .intersect(availableExtentions);
     const auto layers =
-        [ "VK_LAYER_LUNARG_standard_validation"
-        , "VK_LAYER_LUNARG_core_validation"
-        , "VK_LAYER_LUNARG_parameter_validation"
-        , "VK_LAYER_LUNARG_monitor"
-        , "VK_LAYER_RENDERDOC_Capture" ]
-        .intersect(availableLayers);
+        [ "VK_LAYER_RENDERDOC_Capture"
+        //, "VK_LAYER_LUNARG_standard_validation"
+        // , "VK_LAYER_LUNARG_core_validation"
+        // , "VK_LAYER_LUNARG_parameter_validation"
+        // , "VK_LAYER_LUNARG_monitor" 
+        ].intersect(availableLayers);
 
 
     auto vulkan      = defaultAppInfo.initVulkan(extentions,layers);
     auto physDevice  = vulkan.physicalDevices[0];
     writeln("QueueFamilyProperties: ", physDevice.queueFamilyProperties);
-    auto logicDevice = physDevice.createDevice;
-    auto surface     = vulkan.createSurface(sdlInfo);
-    auto formats     = physDevice.surfaceFormats(surface);
-    writeln("Surface formats: ", formats);
     
+    const auto availableDeviceExtentions = physDevice.availableExtentions(null)
+        .map!(e => e.extensionName).toStrArray;
+    writeln("Available device extentions:\n", availableExtentions, "\n");
+    const auto deviceExtentions = [ VK_KHR_SWAPCHAIN_EXTENSION_NAME ]
+        .intersect(availableDeviceExtentions);
+
+    auto logicDevice  = physDevice.createDevice(deviceExtentions);
+    auto surface      = vulkan.createSurface(sdlInfo);
+    auto formats      = physDevice.surfaceFormats(surface);
+    auto capabilities = physDevice.surfaceCapabilities(surface);
+    auto presentation = physDevice.surfacePresentations(surface);
+    writeln( "Formats:\n", formats
+           , "\nCapabilities:\n", capabilities
+           , "\nPresentation:\n", presentation );
+
+    auto swapchain = logicDevice.createSwapchain(surface);
+
     scope(exit) {
+        vkDestroySwapchainKHR(logicDevice, swapchain, null);
         vkDestroyDevice(logicDevice, null);
         vkDestroyInstance(vulkan, null);
     }

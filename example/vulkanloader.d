@@ -25,19 +25,31 @@ struct VulkanHandle(Handle) {
     alias    handle this;
     Handle   handle;
     VkResult status = VkResult.VK_NOT_READY;
+    bool opCast(T : bool)() inout {
+        static if(isPointer!Handle) {
+            return VkResult.VK_SUCCESS == status
+                && cast(bool)handle;
+        } else {
+            return VkResult.VK_SUCCESS == status;
+        }
+    }
 }
 
 alias VulkanInstance      = VulkanHandle!VkInstance;
 alias VulkanLogicalDevice = VulkanHandle!VkDevice;
 alias VulkanSurface       = VulkanHandle!VkSurfaceKHR;
+alias VulkanQueue         = VulkanHandle!VkQueue;
 
-alias surfaceFormats            = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
-alias physicalDevices           = enumerate!vkEnumeratePhysicalDevices;
-alias queueFamilyProperties     = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
-alias availableValidationLayers = enumerate!vkEnumerateInstanceLayerProperties;
-auto  availableInstanceExtentions(in string layerName = "") {
-    return layerName.toStringz.enumerate!vkEnumerateInstanceExtensionProperties;
-}
+alias surfacePresentations        = enumerate!vkGetPhysicalDeviceSurfacePresentModesKHR;
+alias surfaceFormats              = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
+alias physicalDevices             = enumerate!vkEnumeratePhysicalDevices;
+alias queueFamilyProperties       = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
+alias availableExtentions         = enumerate!vkEnumerateDeviceExtensionProperties;
+alias availableValidationLayers   = enumerate!vkEnumerateInstanceLayerProperties;
+alias availableInstanceExtentions = enumerate!vkEnumerateInstanceExtensionProperties;
+
+alias surfaceCapabilities = create!vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
+
 
 auto properties(VkPhysicalDevice device) {
     VkPhysicalDeviceProperties properties;
@@ -52,7 +64,6 @@ auto initVulkan( in ref VkApplicationInfo appInfo
     writeln("Use layers: "    , layersList);
     writeln("Use extentions: ", extentionsList);
 
-    VulkanInstance handle;
     VkInstanceCreateInfo instanceInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         pApplicationInfo:        &appInfo,
@@ -61,13 +72,11 @@ auto initVulkan( in ref VkApplicationInfo appInfo
         enabledExtensionCount:   extentionsList.length.to!uint,
         ppEnabledExtensionNames: extentionsList.toCStrArray.ptr
     };
-    
-    handle.status = vkCreateInstance(&instanceInfo, null, &handle.handle);
-    writeln("Vulkan status: ", handle.status);
-    return handle;
+    return create!vkCreateInstance(&instanceInfo, null);
 }
 
-auto createDevice(VkPhysicalDevice physicalDevice) {
+auto createDevice( VkPhysicalDevice physicalDevice
+                 , in string[]      extentionsList = [] ) {
     auto queuePriorities = [1.0f];
     VkDeviceQueueCreateInfo deviceQueueInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -77,38 +86,66 @@ auto createDevice(VkPhysicalDevice physicalDevice) {
     };
     VkDeviceCreateInfo deviceInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        queueCreateInfoCount: 1,
-        pQueueCreateInfos:    &deviceQueueInfo
+        queueCreateInfoCount:    1,
+        pQueueCreateInfos:       &deviceQueueInfo,
+        enabledExtensionCount:   extentionsList.length.to!uint,
+        ppEnabledExtensionNames: extentionsList.toCStrArray.ptr
     };
-    VulkanLogicalDevice handle;
-    handle.status = vkCreateDevice(physicalDevice, &deviceInfo, null, &handle.handle);
-    writeln("Device status: ", handle.status);
-    return handle;
+    return physicalDevice.create!vkCreateDevice(&deviceInfo, null);
 }
 
 auto createSurface(VulkanInstance instance, SDL2WMInfo info) in {
-    assert(VkResult.VK_SUCCESS == instance.status);
+    assert(instance);
     assert(info.isValid);
-} out (result) {
-    assert(VkResult.VK_SUCCESS == result.status);
 } do {
     VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
         hwnd:      info.info.win.window,
         hinstance: info.info.win.hinstance
     };
-    VulkanSurface handle;
-    handle.status = vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, null, &handle.handle);
-    writeln("Surface status: ", handle.status);
-    return handle;
+    return instance.create!vkCreateWin32SurfaceKHR(&surfaceCreateInfo, null);
+}
+
+auto createSwapchain(VulkanLogicalDevice device, VulkanSurface surface) in {
+    assert(device);
+    assert(surface);
+} do {
+    VkSwapchainCreateInfoKHR createInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        surface:     surface,
+        imageExtent: VkExtent2D(640, 480),
+        minImageCount:    3,
+        imageArrayLayers: 1,
+        imageFormat:      VkFormat.VK_FORMAT_B8G8R8A8_UNORM,
+        imageColorSpace:  VkColorSpaceKHR.VK_COLORSPACE_SRGB_NONLINEAR_KHR,
+        imageUsage:       VkImageUsageFlagBits.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        imageSharingMode: VkSharingMode.VK_SHARING_MODE_EXCLUSIVE,
+        preTransform:     VkSurfaceTransformFlagBitsKHR.VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
+        compositeAlpha:   VkCompositeAlphaFlagBitsKHR.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        presentMode:      VkPresentModeKHR.VK_PRESENT_MODE_MAILBOX_KHR,
+        clipped:      true,
+        oldSwapchain: null
+    };
+    return device.create!vkCreateSwapchainKHR(&createInfo, null);
 }
 
 //////////////////////////////////////////////////////////////
 import std.range.primitives
      , std.traits;
 
+template create(alias creator) {
+    alias Target = PointerTarget!(Parameters!creator[$-1]);
+    auto create(A...)(A a) out(result) {
+        assert(result);
+    } do {
+        VulkanHandle!Target target;
+        target.status = creator(a, &target.handle);
+        writeln("Create `", Target.stringof, "`: ", target.status);
+        return target;
+    }
+}
+
 template enumerate(alias enumerator) {
-    import std.traits;
     static assert( isCallable!enumerator, "Enumerator is not callable!");
     static assert( Parameters!enumerator.length >= 2, "Enumerator should match patern: `enumarator(..., uint* count, Enumerable*)`!");
     alias Enumerable = PointerTarget!(Parameters!enumerator[$-1]);
