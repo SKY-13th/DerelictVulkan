@@ -20,9 +20,11 @@ struct SDL2WMInfo {
     bool          isValid = false;
 }
 
+enum defaultWindowSize = vec2i(640, 480);
+
 auto createWindow( in string        appName
                   , SDL_WindowFlags flags = SDL_WINDOW_SHOWN
-                  , vec2i           size  = vec2i(640, 480) )
+                  , vec2i           size  = defaultWindowSize )
 {
     SDL2Window output = {
         window: SDL_CreateWindow( 

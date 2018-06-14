@@ -158,6 +158,71 @@ auto createShaderModule(VulkanLogicalDevice device, string path) {
     return device.create!vkCreateShaderModule(&createInfo, null);
 }
 
+auto createPipeline(VulkanLogicalDevice device) {
+    // VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+    //     sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
+    // };
+    // VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
+    //     sType:    VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+    //     topology: VkPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+    // };
+    // VkViewport viewport = {
+    //     width:  defaultWindowSize.x,
+    //     height: defaultWindowSize.y,
+    //     maxDepth: 1
+    // };
+    // VkRect2D scissor = {
+    //     extent: VkExtent2D(640, 480)
+    // };
+
+    // VkPipelineViewportStateCreateInfo viewportState = {
+    //     sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+    //     viewportCount: 1,
+    //     scissorCount:  1,
+    //     pViewports:    &viewport,
+    //     pScissors:     &scissor
+    // };
+
+    // VkPipelineRasterizationStateCreateInfo rasterizer  = {
+    //     sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+    //     polygonMode: VkPolygonMode.VK_POLYGON_MODE_FILL,
+    //     lineWidth: 1.0f,
+    //     cullMode: VkCullModeFlagBits.VK_CULL_MODE_BACK_BIT,
+    //     frontFace: VkFrontFace.VK_FRONT_FACE_CLOCKWISE,
+    // };
+
+    // VkPipelineMultisampleStateCreateInfo multisampling = {
+    //     sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+    //     rasterizationSamples: VkSampleCountFlagBits.VK_SAMPLE_COUNT_1_BIT,
+    //     minSampleShading: 1.0f, // Optional
+    // };
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachment = {
+        colorWriteMask: VkColorComponentFlagBits.VK_COLOR_COMPONENT_R_BIT
+                      | VkColorComponentFlagBits.VK_COLOR_COMPONENT_G_BIT
+                      | VkColorComponentFlagBits.VK_COLOR_COMPONENT_B_BIT
+                      | VkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT,
+        srcColorBlendFactor: VkBlendFactor.VK_BLEND_FACTOR_ONE,  // Optional
+        dstColorBlendFactor: VkBlendFactor.VK_BLEND_FACTOR_ZERO, // Optional
+        colorBlendOp:        VkBlendOp.VK_BLEND_OP_ADD,      // Optional
+        srcAlphaBlendFactor: VkBlendFactor.VK_BLEND_FACTOR_ONE,  // Optional
+        dstAlphaBlendFactor: VkBlendFactor.VK_BLEND_FACTOR_ZERO, // Optional
+        alphaBlendOp:        VkBlendOp.VK_BLEND_OP_ADD       // Optional
+    };
+
+    VkPipelineColorBlendStateCreateInfo colorBlending = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        attachmentCount: 1,
+        pAttachments:  &colorBlendAttachment,
+    };
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
+    };
+
+    return device.create!vkCreatePipelineLayout(&pipelineLayoutInfo, null);
+}
+
 //////////////////////////////////////////////////////////////
 import std.range.primitives
      , std.traits;

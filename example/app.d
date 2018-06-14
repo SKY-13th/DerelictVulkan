@@ -66,10 +66,10 @@ void main() {
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         pName: "main".toStringz
     };
-    shaderStages[0].stage  = VkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT;
-    shaderStages[1].stage  = VkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT;
-    shaderStages[0].module = vertModule;
-    shaderStages[1].module = fragModule;
+    shaderStages[0].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT;
+    shaderStages[1].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderStages[0].module_ = vertModule;
+    shaderStages[1].module_ = fragModule;
 
     scope(exit) {
         vkDestroyShaderModule(logicDevice, vertModule, null);
@@ -81,6 +81,11 @@ void main() {
         vkDestroyDevice(logicDevice, null);
         vkDestroyInstance(vulkan, null);
     }
+
+    //////////////////////////////////////////////////////////////
+
+    auto pipeline = logicDevice.createPipeline;
+    scope(exit) vkDestroyPipelineLayout(logicDevice, pipeline, null);
 
     // (event) {
     //     // TODO: some stuff
