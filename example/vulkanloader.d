@@ -25,6 +25,10 @@ struct VulkanHandle(Handle) {
     alias    handle this;
     Handle   handle;
     VkResult status = VkResult.VK_NOT_READY;
+    ref Handle opCast(T : Handle)() inout {
+        return handle;
+    }
+
     bool opCast(T : bool)() inout {
         static if(isPointer!Handle) {
             return VkResult.VK_SUCCESS == status
@@ -35,10 +39,11 @@ struct VulkanHandle(Handle) {
     }
 }
 
-alias VulkanInstance      = VulkanHandle!VkInstance;
-alias VulkanLogicalDevice = VulkanHandle!VkDevice;
-alias VulkanSurface       = VulkanHandle!VkSurfaceKHR;
-alias VulkanQueue         = VulkanHandle!VkQueue;
+alias VulkanInstance       = VulkanHandle!VkInstance;
+alias VulkanLogicalDevice  = VulkanHandle!VkDevice;
+alias VulkanSurface        = VulkanHandle!VkSurfaceKHR;
+alias VulkanQueue          = VulkanHandle!VkQueue;
+alias VulkanPipelineLayout = VulkanHandle!VkPipelineLayout;
 
 alias surfacePresentations        = enumerate!vkGetPhysicalDeviceSurfacePresentModesKHR;
 alias surfaceFormats              = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
@@ -158,44 +163,48 @@ auto createShaderModule(VulkanLogicalDevice device, string path) {
     return device.create!vkCreateShaderModule(&createInfo, null);
 }
 
-auto createPipeline(VulkanLogicalDevice device) {
-    // VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
-    //     sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-    // };
-    // VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
-    //     sType:    VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-    //     topology: VkPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
-    // };
-    // VkViewport viewport = {
-    //     width:  defaultWindowSize.x,
-    //     height: defaultWindowSize.y,
-    //     maxDepth: 1
-    // };
-    // VkRect2D scissor = {
-    //     extent: VkExtent2D(640, 480)
-    // };
+auto createPipeline( VulkanLogicalDevice  device
+                   , VulkanPipelineLayout pipelineLayout 
+                   , VkRenderPass         renderPass 
+                   , VkPipelineShaderStageCreateInfo[] shaderStages)
+{
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
+    };
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
+        sType:    VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        topology: VkPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+    };
+    VkViewport viewport = {
+        width:  defaultWindowSize.x,
+        height: defaultWindowSize.y,
+        maxDepth: 1
+    };
+    VkRect2D scissor = {
+        extent: VkExtent2D(640, 480)
+    };
 
-    // VkPipelineViewportStateCreateInfo viewportState = {
-    //     sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-    //     viewportCount: 1,
-    //     scissorCount:  1,
-    //     pViewports:    &viewport,
-    //     pScissors:     &scissor
-    // };
+    VkPipelineViewportStateCreateInfo viewportState = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        viewportCount: 1,
+        scissorCount:  1,
+        pViewports:    &viewport,
+        pScissors:     &scissor
+    };
 
-    // VkPipelineRasterizationStateCreateInfo rasterizer  = {
-    //     sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-    //     polygonMode: VkPolygonMode.VK_POLYGON_MODE_FILL,
-    //     lineWidth: 1.0f,
-    //     cullMode: VkCullModeFlagBits.VK_CULL_MODE_BACK_BIT,
-    //     frontFace: VkFrontFace.VK_FRONT_FACE_CLOCKWISE,
-    // };
+    VkPipelineRasterizationStateCreateInfo rasterizer  = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        polygonMode: VkPolygonMode.VK_POLYGON_MODE_FILL,
+        lineWidth: 1.0f,
+        cullMode: VkCullModeFlagBits.VK_CULL_MODE_BACK_BIT,
+        frontFace: VkFrontFace.VK_FRONT_FACE_CLOCKWISE,
+    };
 
-    // VkPipelineMultisampleStateCreateInfo multisampling = {
-    //     sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-    //     rasterizationSamples: VkSampleCountFlagBits.VK_SAMPLE_COUNT_1_BIT,
-    //     minSampleShading: 1.0f, // Optional
-    // };
+    VkPipelineMultisampleStateCreateInfo multisampling = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        rasterizationSamples: VkSampleCountFlagBits.VK_SAMPLE_COUNT_1_BIT,
+        minSampleShading: 1.0f, // Optional
+    };
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {
         colorWriteMask: VkColorComponentFlagBits.VK_COLOR_COMPONENT_R_BIT
@@ -216,11 +225,96 @@ auto createPipeline(VulkanLogicalDevice device) {
         pAttachments:  &colorBlendAttachment,
     };
 
+    VkGraphicsPipelineCreateInfo pipelineInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        stageCount:          shaderStages.length.to!uint,
+        pStages:             shaderStages.ptr,
+        pVertexInputState:   &vertexInputInfo,
+        pInputAssemblyState: &inputAssembly,
+        pViewportState:      &viewportState,
+        pRasterizationState: &rasterizer,
+        pMultisampleState:   &multisampling,
+        pColorBlendState:    &colorBlending,
+        layout: pipelineLayout,
+        renderPass: renderPass
+    };
+    return device.create!vkCreateGraphicsPipelines(null, 1, &pipelineInfo, null);
+}
+
+auto createPipelineLayout(VulkanLogicalDevice device){
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
     };
 
     return device.create!vkCreatePipelineLayout(&pipelineLayoutInfo, null);
+}
+
+auto createRenderPass(VulkanLogicalDevice device, VulkanPipelineLayout pipeline) in {
+    assert(device);
+    assert(pipeline);
+} do {
+    VkAttachmentDescription colorAttachment = {
+        format:  VkFormat.VK_FORMAT_B8G8R8A8_UNORM,
+        samples: VkSampleCountFlagBits.VK_SAMPLE_COUNT_1_BIT,
+        loadOp:  VkAttachmentLoadOp.VK_ATTACHMENT_LOAD_OP_CLEAR,
+        storeOp: VkAttachmentStoreOp.VK_ATTACHMENT_STORE_OP_STORE,
+        stencilLoadOp: VkAttachmentLoadOp.VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        stencilStoreOp: VkAttachmentStoreOp.VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        initialLayout: VkImageLayout.VK_IMAGE_LAYOUT_UNDEFINED,
+        finalLayout: VkImageLayout.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    };
+    VkAttachmentReference colorAttachmentRef = {
+        layout: VkImageLayout.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    };
+    VkSubpassDescription subpass = {
+        pipelineBindPoint: VkPipelineBindPoint.VK_PIPELINE_BIND_POINT_GRAPHICS,
+        colorAttachmentCount: 1,
+        pColorAttachments: &colorAttachmentRef
+    };
+    VkRenderPassCreateInfo renderPassInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        attachmentCount: 1,
+        pAttachments: &colorAttachment,
+        subpassCount: 1,
+        pSubpasses: &subpass
+    };
+    return device.create!vkCreateRenderPass(&renderPassInfo, null);
+}
+
+auto createFramebuffer( VulkanLogicalDevice device
+                      , VkRenderPass        renderPass
+                      , VkImageView         view ) 
+{
+    VkFramebufferCreateInfo framebufferInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        renderPass: renderPass,
+        attachmentCount: 1,
+        pAttachments:    &view,
+        width:  defaultWindowSize.x,
+        height: defaultWindowSize.y,
+        layers: 1
+    };
+    return device.create!vkCreateFramebuffer(&framebufferInfo, null);
+}
+
+auto createCommandPool(VulkanLogicalDevice device){
+    VkCommandPoolCreateInfo poolInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        queueFamilyIndex: 0
+    };
+    return device.create!vkCreateCommandPool(&poolInfo, null);
+}
+
+auto createCommandBuffer(VulkanLogicalDevice device, VkCommandPool commandPool, ulong size) {
+    VkCommandBufferAllocateInfo allocInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        commandPool: commandPool,
+        level: VkCommandBufferLevel.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        commandBufferCount: size.to!uint,
+    };
+    VkCommandBuffer[] target = new VkCommandBuffer[size];
+    vkAllocateCommandBuffers(device, &allocInfo, target.ptr);
+    return target;
 }
 
 //////////////////////////////////////////////////////////////

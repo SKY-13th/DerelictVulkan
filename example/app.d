@@ -84,8 +84,22 @@ void main() {
 
     //////////////////////////////////////////////////////////////
 
-    auto pipeline = logicDevice.createPipeline;
-    scope(exit) vkDestroyPipelineLayout(logicDevice, pipeline, null);
+    auto layout       = logicDevice.createPipelineLayout;
+    auto renderpass   = logicDevice.createRenderPass(layout);
+    auto pipeline     = logicDevice.createPipeline(layout,renderpass,shaderStages);
+    auto framebuffers = imageViews
+        .map!( v => logicDevice.createFramebuffer(renderpass, v)).array;
+    auto commandPool  = logicDevice.createCommandPool;
+    auto commandBuffs = logicDevice.createCommandBuffer(commandPool, framebuffers.length);
+    scope(exit) {
+        vkDestroyCommandPool(logicDevice, commandPool, null);
+        foreach(buff; framebuffers) {
+            vkDestroyFramebuffer(logicDevice, buff, null);
+        }
+        vkDestroyPipeline(logicDevice, pipeline, null);
+        vkDestroyRenderPass(logicDevice, renderpass, null);
+        vkDestroyPipelineLayout(logicDevice, layout, null);
+    }
 
     // (event) {
     //     // TODO: some stuff
