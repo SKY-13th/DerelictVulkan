@@ -196,27 +196,17 @@ auto createPipeline( VulkanLogicalDevice  device
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         polygonMode: VkPolygonMode.VK_POLYGON_MODE_FILL,
         lineWidth: 1.0f,
-        cullMode: VkCullModeFlagBits.VK_CULL_MODE_BACK_BIT,
-        frontFace: VkFrontFace.VK_FRONT_FACE_CLOCKWISE,
+        cullMode: VkCullModeFlagBits.VK_CULL_MODE_NONE,
+        frontFace: VkFrontFace.VK_FRONT_FACE_CLOCKWISE
     };
 
     VkPipelineMultisampleStateCreateInfo multisampling = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         rasterizationSamples: VkSampleCountFlagBits.VK_SAMPLE_COUNT_1_BIT,
-        minSampleShading: 1.0f, // Optional
     };
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-        colorWriteMask: VkColorComponentFlagBits.VK_COLOR_COMPONENT_R_BIT
-                      | VkColorComponentFlagBits.VK_COLOR_COMPONENT_G_BIT
-                      | VkColorComponentFlagBits.VK_COLOR_COMPONENT_B_BIT
-                      | VkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT,
-        srcColorBlendFactor: VkBlendFactor.VK_BLEND_FACTOR_ONE,  // Optional
-        dstColorBlendFactor: VkBlendFactor.VK_BLEND_FACTOR_ZERO, // Optional
-        colorBlendOp:        VkBlendOp.VK_BLEND_OP_ADD,      // Optional
-        srcAlphaBlendFactor: VkBlendFactor.VK_BLEND_FACTOR_ONE,  // Optional
-        dstAlphaBlendFactor: VkBlendFactor.VK_BLEND_FACTOR_ZERO, // Optional
-        alphaBlendOp:        VkBlendOp.VK_BLEND_OP_ADD       // Optional
+        colorWriteMask: 0xf,
     };
 
     VkPipelineColorBlendStateCreateInfo colorBlending = {
