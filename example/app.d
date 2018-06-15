@@ -1,6 +1,7 @@
 import derelict.vulkan;
 import std.stdio;
-import std.array;
+import std.array
+, std.conv;
 import sdlloader;
 import vulkanloader;
 import std.string;
@@ -19,8 +20,8 @@ void main() {
         .map!(l => l.layerName).toStrArray;
     const auto availableExtentions = availableInstanceExtentions(null)
         .map!(e => e.extensionName).toStrArray;
-    writeln("Available layers:\n"    , availableLayers);
-    writeln("Available extentions:\n", availableExtentions);
+    // writeln("Available layers:\n"    , availableLayers);
+    // writeln("Available extentions:\n", availableExtentions);
     writeln();
 
     const auto extentions =
@@ -29,10 +30,10 @@ void main() {
         .intersect(availableExtentions);
     const auto layers =
         [ "VK_LAYER_RENDERDOC_Capture"
-        //, "VK_LAYER_LUNARG_standard_validation"
-        // , "VK_LAYER_LUNARG_core_validation"
-        // , "VK_LAYER_LUNARG_parameter_validation"
-        // , "VK_LAYER_LUNARG_monitor" 
+        , "VK_LAYER_LUNARG_standard_validation"
+        , "VK_LAYER_LUNARG_core_validation"
+        , "VK_LAYER_LUNARG_parameter_validation"
+        , "VK_LAYER_LUNARG_monitor" 
         ].intersect(availableLayers);
 
 
@@ -101,7 +102,79 @@ void main() {
         vkDestroyPipelineLayout(logicDevice, layout, null);
     }
 
-    // (event) {
-    //     // TODO: some stuff
-    // }.eventLoop;
+    for (size_t i = 0; i < commandBuffs.length; i++) {
+        VkCommandBufferBeginInfo beginInfo = {
+            sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            flags: VkCommandBufferUsageFlagBits.VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT
+        };
+
+        if (vkBeginCommandBuffer(commandBuffs[i], &beginInfo) != VkResult.VK_SUCCESS) {
+            writeln("ERROR! Start");
+        }
+
+        VkClearValue clearColor;
+        clearColor.color.float32 = [0.0f, 0.0f, 0.0f, 1.0f];
+        VkRenderPassBeginInfo renderPassInfo = {
+            sType: VkStructureType.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            renderPass:  renderpass,
+            framebuffer: framebuffers[i],
+            renderArea:{{0, 0},VkExtent2D(640, 480)},
+            clearValueCount: 1,
+            pClearValues: &clearColor
+        };
+        vkCmdBeginRenderPass(commandBuffs[i], &renderPassInfo, VkSubpassContents.VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(commandBuffs[i], VkPipelineBindPoint.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        vkCmdDraw(commandBuffs[i], 3, 1, 0, 0);
+        vkCmdEndRenderPass(commandBuffs[i]);
+        if (vkEndCommandBuffer(commandBuffs[i]) != VkResult.VK_SUCCESS) {
+            writeln("ERROR! end");
+        }
+    }
+
+    auto imageAvailableSemaphore = logicDevice.createSemaphores;
+    auto renderFinishedSemaphore = logicDevice.createSemaphores;
+    scope(exit){
+        vkDestroySemaphore(logicDevice, renderFinishedSemaphore, null);
+        vkDestroySemaphore(logicDevice, imageAvailableSemaphore, null);
+    }
+    auto graphQueue   = logicDevice.create!vkGetDeviceQueue(0,0);
+
+    (event){
+        //{ //draw
+            uint imageIndex;
+            VkResult result;
+            result = vkAcquireNextImageKHR(logicDevice, swapchain, ulong.max, imageAvailableSemaphore, null, &imageIndex);
+            if(result != VkResult.VK_SUCCESS){
+                throw new StringException(imageIndex.to!string ~ result.to!string);
+            }
+            VkSemaphore[]          waitSemaphores   = [imageAvailableSemaphore];
+            VkPipelineStageFlags[] waitStages       = [VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT];
+            VkSemaphore[]          signalSemaphores = [renderFinishedSemaphore];
+            VkSubmitInfo submitInfo = {
+                sType: VkStructureType.VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                waitSemaphoreCount: 1,
+                pWaitSemaphores:    waitSemaphores.ptr,
+                pWaitDstStageMask:  waitStages.ptr,
+                commandBufferCount: 1,
+                pCommandBuffers: &commandBuffs[imageIndex],
+                signalSemaphoreCount: 1,
+                pSignalSemaphores: signalSemaphores.ptr
+            };
+            result = vkQueueSubmit(graphQueue, 1, &submitInfo, null);
+            if(result != VkResult.VK_SUCCESS){
+                throw new StringException(result.to!string);
+            }
+
+            VkSwapchainKHR[] swapChains = [swapchain];
+            VkPresentInfoKHR presentInfo = {
+                sType: VkStructureType.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                waitSemaphoreCount: 1,
+                pWaitSemaphores: signalSemaphores.ptr,
+                swapchainCount: 1,
+                pSwapchains: swapChains.ptr,
+                pImageIndices: &imageIndex,
+            };
+            vkQueuePresentKHR(graphQueue, &presentInfo);
+        //}
+    }.eventLoop;
 }

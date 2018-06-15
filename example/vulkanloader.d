@@ -271,12 +271,22 @@ auto createRenderPass(VulkanLogicalDevice device, VulkanPipelineLayout pipeline)
         colorAttachmentCount: 1,
         pColorAttachments: &colorAttachmentRef
     };
+    VkSubpassDependency dependency = {
+        srcSubpass: VK_SUBPASS_EXTERNAL,
+        dstSubpass: 0,
+        srcStageMask: VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        srcAccessMask: VkAccessFlagBits.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT 
+                     | VkAccessFlagBits.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+
+    };
     VkRenderPassCreateInfo renderPassInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         attachmentCount: 1,
         pAttachments: &colorAttachment,
         subpassCount: 1,
-        pSubpasses: &subpass
+        pSubpasses: &subpass,
+        dependencyCount: 1,
+        pDependencies: &dependency
     };
     return device.create!vkCreateRenderPass(&renderPassInfo, null);
 }
@@ -317,6 +327,13 @@ auto createCommandBuffer(VulkanLogicalDevice device, VkCommandPool commandPool, 
     return target;
 }
 
+auto createSemaphores(VulkanLogicalDevice device){
+    VkSemaphoreCreateInfo semaphoreInfo = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+    };
+    return device.create!vkCreateSemaphore(&semaphoreInfo, null);
+}
+
 //////////////////////////////////////////////////////////////
 import std.range.primitives
      , std.traits;
@@ -326,14 +343,19 @@ template create(alias creator) {
     static assert( Parameters!creator.length >= 1
                  , "Creator should match patern: `creator(..., Target*)`!" );
     alias Target = PointerTarget!(Parameters!creator[$-1]);
-    
+    alias R      = ReturnType!creator;
     auto create(Args...)(Args args) 
     if(__traits(compiles, creator(args, null)))
     out(result) {
         assert(result);
     } do {
         VulkanHandle!Target target;
-        target.status = creator(args, &target.handle);
+        static if( is(R == void) ){
+            creator(args, &target.handle);
+            target.status = VkResult.VK_SUCCESS;
+        } else {
+            target.status = creator(args, &target.handle);
+        }
         writeln("Create `", Target.stringof, "`: ", target.status);
         return target;
     }
