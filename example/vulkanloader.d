@@ -1,4 +1,5 @@
 module vulkanloader;
+public import utils;
 public import derelict.vulkan;
 
 import std.algorithm.iteration
@@ -8,6 +9,7 @@ import std.algorithm.iteration
      , std.array
      , std.meta;
 import sdlloader;
+import utils;
 
 static this() {
     DerelictVulkan.load();
@@ -20,30 +22,6 @@ immutable VkApplicationInfo defaultAppInfo = {
     pApplicationName: defaultAppName.ptr,
     pEngineName:      defaultAppName.ptr,
 };
-
-struct VulkanHandle(Handle) {
-    alias    handle this;
-    Handle   handle;
-    VkResult status = VkResult.VK_NOT_READY;
-    ref Handle opCast(T : Handle)() inout {
-        return handle;
-    }
-
-    bool opCast(T : bool)() inout {
-        static if(isPointer!Handle) {
-            return VkResult.VK_SUCCESS == status
-                && cast(bool)handle;
-        } else {
-            return VkResult.VK_SUCCESS == status;
-        }
-    }
-}
-
-alias VulkanInstance       = VulkanHandle!VkInstance;
-alias VulkanLogicalDevice  = VulkanHandle!VkDevice;
-alias VulkanSurface        = VulkanHandle!VkSurfaceKHR;
-alias VulkanQueue          = VulkanHandle!VkQueue;
-alias VulkanPipelineLayout = VulkanHandle!VkPipelineLayout;
 
 alias surfacePresentations        = enumerate!vkGetPhysicalDeviceSurfacePresentModesKHR;
 alias surfaceFormats              = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
@@ -99,7 +77,7 @@ auto createDevice( VkPhysicalDevice physicalDevice
     return physicalDevice.create!vkCreateDevice(&deviceInfo, null);
 }
 
-auto createSurface(VulkanInstance instance, SDL2WMInfo info) in {
+auto createSurface(VkInstance instance, SDL2WMInfo info) in {
     assert(instance);
     assert(info.isValid);
 } do {
@@ -111,7 +89,7 @@ auto createSurface(VulkanInstance instance, SDL2WMInfo info) in {
     return instance.create!vkCreateWin32SurfaceKHR(&surfaceCreateInfo, null);
 }
 
-auto createSwapchain(VulkanLogicalDevice device, VulkanSurface surface) in {
+auto createSwapchain(VkDevice device, VkSurfaceKHR surface) in {
     assert(device);
     assert(surface);
 } do {
@@ -134,7 +112,7 @@ auto createSwapchain(VulkanLogicalDevice device, VulkanSurface surface) in {
     return device.create!vkCreateSwapchainKHR(&createInfo, null);
 }
 
-auto createImageView(VulkanLogicalDevice device, VkImage image) in {
+auto createImageView(VkDevice device, VkImage image) in {
     assert(device);
     assert(image);
 } do {
@@ -152,7 +130,7 @@ auto createImageView(VulkanLogicalDevice device, VkImage image) in {
     return device.create!vkCreateImageView(&createInfo, null);
 }
 
-auto createShaderModule(VulkanLogicalDevice device, string path) {
+auto createShaderModule(VkDevice device, string path) {
     import std.file : read;
     const auto data = read(path);
     VkShaderModuleCreateInfo createInfo = {
@@ -163,9 +141,9 @@ auto createShaderModule(VulkanLogicalDevice device, string path) {
     return device.create!vkCreateShaderModule(&createInfo, null);
 }
 
-auto createPipeline( VulkanLogicalDevice  device
-                   , VulkanPipelineLayout pipelineLayout 
-                   , VkRenderPass         renderPass 
+auto createPipeline( VkDevice         device
+                   , VkPipelineLayout pipelineLayout 
+                   , VkRenderPass     renderPass 
                    , VkPipelineShaderStageCreateInfo[] shaderStages)
 {
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
@@ -231,7 +209,7 @@ auto createPipeline( VulkanLogicalDevice  device
     return device.create!vkCreateGraphicsPipelines(null, 1, &pipelineInfo, null);
 }
 
-auto createPipelineLayout(VulkanLogicalDevice device){
+auto createPipelineLayout(VkDevice device){
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
     };
@@ -239,7 +217,7 @@ auto createPipelineLayout(VulkanLogicalDevice device){
     return device.create!vkCreatePipelineLayout(&pipelineLayoutInfo, null);
 }
 
-auto createRenderPass(VulkanLogicalDevice device, VulkanPipelineLayout pipeline) in {
+auto createRenderPass(VkDevice device, VkPipelineLayout pipeline) in {
     assert(device);
     assert(pipeline);
 } do {
@@ -281,9 +259,9 @@ auto createRenderPass(VulkanLogicalDevice device, VulkanPipelineLayout pipeline)
     return device.create!vkCreateRenderPass(&renderPassInfo, null);
 }
 
-auto createFramebuffer( VulkanLogicalDevice device
-                      , VkRenderPass        renderPass
-                      , VkImageView         view ) 
+auto createFramebuffer( VkDevice     device
+                      , VkRenderPass renderPass
+                      , VkImageView  view )
 {
     VkFramebufferCreateInfo framebufferInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -297,7 +275,7 @@ auto createFramebuffer( VulkanLogicalDevice device
     return device.create!vkCreateFramebuffer(&framebufferInfo, null);
 }
 
-auto createCommandPool(VulkanLogicalDevice device){
+auto createCommandPool(VkDevice device){
     VkCommandPoolCreateInfo poolInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         queueFamilyIndex: 0
@@ -305,7 +283,7 @@ auto createCommandPool(VulkanLogicalDevice device){
     return device.create!vkCreateCommandPool(&poolInfo, null);
 }
 
-auto createCommandBuffer(VulkanLogicalDevice device, VkCommandPool commandPool, ulong size) {
+auto createCommandBuffer(VkDevice device, VkCommandPool commandPool, ulong size) {
     VkCommandBufferAllocateInfo allocInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         commandPool: commandPool,
@@ -317,72 +295,9 @@ auto createCommandBuffer(VulkanLogicalDevice device, VkCommandPool commandPool, 
     return target;
 }
 
-auto createSemaphores(VulkanLogicalDevice device){
+auto createSemaphores(VkDevice device){
     VkSemaphoreCreateInfo semaphoreInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
     };
     return device.create!vkCreateSemaphore(&semaphoreInfo, null);
-}
-
-//////////////////////////////////////////////////////////////
-import std.range.primitives
-     , std.traits;
-
-template create(alias creator) {
-    static assert( isCallable!creator, "Creator is not callable!" );
-    static assert( Parameters!creator.length >= 1
-                 , "Creator should match patern: `creator(..., Target*)`!" );
-    alias Target = PointerTarget!(Parameters!creator[$-1]);
-    alias R      = ReturnType!creator;
-    auto create(Args...)(Args args) 
-    if(__traits(compiles, creator(args, null)))
-    out(result) {
-        assert(result);
-    } do {
-        VulkanHandle!Target target;
-        static if( is(R == void) ){
-            creator(args, &target.handle);
-            target.status = VkResult.VK_SUCCESS;
-        } else {
-            target.status = creator(args, &target.handle);
-        }
-        writeln("Create `", Target.stringof, "`: ", target.status);
-        return target;
-    }
-}
-
-template enumerate(alias enumerator) {
-    static assert( isCallable!enumerator, "Enumerator is not callable!");
-    static assert( Parameters!enumerator.length >= 2
-                 , "Enumerator should match patern: `enumarator(..., uint* count, Enumerable*)`!");
-    alias Enumerable = PointerTarget!(Parameters!enumerator[$-1]);
-
-    auto enumerate(Args...)(Args args)
-    if(__traits(compiles, enumerator(args, null, null)))
-    {
-        uint count;
-        enumerator( args, &count, null );
-        auto list = new Enumerable[count];
-        return !count ? list : () {
-            enumerator( args, &count, list.ptr );
-            return list;
-        } ();
-    }
-}
-
-auto intersect( in string[] left, in string[] right ) pure {
-    import std.algorithm.searching : canFind;
-    return left.filter!(a => right.canFind(a)).array;
-}
-
-auto toCStrArray(Range)(Range data) pure
-if (isInputRange!(Unqual!Range))
-{
-    return data.map!(a => toStringz(a)).array;
-}
-
-auto toStrArray(Range)(Range data) pure 
-if (isInputRange!(Unqual!Range))
-{
-    return data.map!(a => fromStringz(a.ptr).idup).array;
 }
