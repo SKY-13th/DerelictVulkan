@@ -34,10 +34,11 @@ import derelict.vulkan;
     auto nothing(M: Maybe!T, T)() {
         return M(T.init, false);
     }
+}
 
-    auto bind(alias F, T)(auto ref Maybe!T maybe) {
-        return maybe ? F(maybe.payload) : nothing!T;
-    }
+auto bind(alias F, T)(auto ref Maybe!T maybe) {
+    alias Result = typeof(F(maybe));
+    return maybe ? F(maybe) : nothing!Result;
 }
 
 //////////////////////////////////////////////////////////////
@@ -49,7 +50,7 @@ template create(alias creator) {
                  , "Creator should match patern: `creator(..., Target*)`!" );
     alias Target   = PointerTarget!(Parameters!creator[$-1]);
     enum  isReturn = !is( ReturnType!creator == void );
-    
+
     auto create(Args...)(Args args)
     if(__traits(compiles, creator(args, null)))
     {

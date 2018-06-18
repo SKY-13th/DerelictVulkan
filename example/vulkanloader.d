@@ -28,8 +28,8 @@ alias surfaceFormats              = enumerate!vkGetPhysicalDeviceSurfaceFormatsK
 alias physicalDevices             = enumerate!vkEnumeratePhysicalDevices;
 alias queueFamilyProperties       = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
 alias availableExtentions         = enumerate!vkEnumerateDeviceExtensionProperties;
+alias availableExtentions         = enumerate!vkEnumerateInstanceExtensionProperties;
 alias availableValidationLayers   = enumerate!vkEnumerateInstanceLayerProperties;
-alias availableInstanceExtentions = enumerate!vkEnumerateInstanceExtensionProperties;
 alias swapchainImages             = enumerate!vkGetSwapchainImagesKHR;
 
 alias surfaceCapabilities = create!vkGetPhysicalDeviceSurfaceCapabilitiesKHR;

@@ -7,6 +7,15 @@ import vulkanloader;
 import std.string;
 import std.algorithm.iteration;
 
+enum desiredDeviceExtentions    =   [ VK_KHR_SWAPCHAIN_EXTENSION_NAME ];
+enum desiredExtentions          =   [ VK_KHR_SURFACE_EXTENSION_NAME
+                                    , VK_KHR_WIN32_SURFACE_EXTENSION_NAME ];
+enum desiredLayers              =   [ "VK_LAYER_LUNARG_standard_validation"
+                                    , "VK_LAYER_LUNARG_core_validation"
+                                    , "VK_LAYER_LUNARG_parameter_validation"
+                                    , "VK_LAYER_LUNARG_monitor"
+                                    , "VK_LAYER_RENDERDOC_Capture" ];
+
 void main() {
     auto sdlWindow   = defaultAppName.createWindow;
     auto sdlRenderer = sdlWindow.createRenderer;
@@ -16,25 +25,19 @@ void main() {
         SDL_DestroyWindow(sdlWindow);
     }
 
-    const auto availableLayers     = availableValidationLayers
+    const auto availableLayersList      = availableValidationLayers
         .map!(l => l.layerName).toStrArray;
-    const auto availableExtentions = availableInstanceExtentions(null)
+    const auto availableExtentionsList  = availableExtentions(null)
         .map!(e => e.extensionName).toStrArray;
-    writeln("Available layers:\n"    , availableLayers);
-    writeln("Available extentions:\n", availableExtentions);
+
+    writeln("Available layers:\n"    , availableLayersList);
+    writeln("Available extentions:\n", availableExtentionsList);
     writeln();
 
-    const auto extentions =
-        [ VK_KHR_SURFACE_EXTENSION_NAME
-        , VK_KHR_WIN32_SURFACE_EXTENSION_NAME ]
-        .intersect(availableExtentions);
-    const auto layers =
-        [ "VK_LAYER_LUNARG_standard_validation"
-        , "VK_LAYER_LUNARG_core_validation"
-        , "VK_LAYER_LUNARG_parameter_validation"
-        , "VK_LAYER_LUNARG_monitor"
-        , "VK_LAYER_RENDERDOC_Capture"
-        ].intersect(availableLayers);
+    const auto extentions = desiredExtentions
+        .intersect(availableExtentionsList);
+    const auto layers = desiredLayers
+        .intersect(availableLayersList);
 
 
     auto vulkan      = defaultAppInfo.initVulkan(extentions,layers);
