@@ -27,8 +27,16 @@ import derelict.vulkan;
         return m;
     }
 
+    auto nothing(T)(in ref T example) {
+        return Maybe!T(T.init, false);
+    }
+
     auto nothing(T)() {
         return Maybe!T(T.init, false);
+    }
+
+    auto nothing(alias example)() {
+        return nothing!(typeof(example));
     }
 
     auto nothing(M: Maybe!T, T)() {
@@ -37,13 +45,13 @@ import derelict.vulkan;
 }
 
 auto bind(alias F, T)(auto ref Maybe!T maybe) {
-    alias Result = typeof(F(maybe));
-    return maybe ? F(maybe) : nothing!Result;
+    alias Result = typeof(F(maybe.payload));
+    return maybe ? F(maybe.payload) : nothing!Result;
 }
 
 //////////////////////////////////////////////////////////////
 
-template create(alias creator) {
+template acquire(alias creator) {
     import std.stdio;
     static assert( isCallable!creator, "Creator is not callable!" );
     static assert( Parameters!creator.length >= 1
@@ -51,7 +59,7 @@ template create(alias creator) {
     alias Target   = PointerTarget!(Parameters!creator[$-1]);
     enum  isReturn = !is( ReturnType!creator == void );
 
-    auto create(Args...)(Args args)
+    auto acquire(Args...)(Args args)
     if(__traits(compiles, creator(args, null)))
     {
         Target target;
@@ -70,11 +78,11 @@ template create(alias creator) {
 
     T to(T: bool, A)(A a) pure nothrow {
         enum isVkResult = is(A : VkResult);
-        static if(isVkResult) {
+        static if( isVkResult ) {
             return VkResult.VK_SUCCESS == a;
-        } else {
+        } else static if( isPointer!A ) {
             return cast(bool) a;
-        }
+        } else return true;
     }
 }
 
@@ -96,7 +104,7 @@ template enumerate(alias enumerator) {
     }
 }
 
-auto intersect(Range)( in Range[] left, in Range[] right ) pure
+auto intersect(Range)( in Range left, in Range right ) pure
 if (isInputRange!(Unqual!Range))
 {
     import std.algorithm.searching : canFind;

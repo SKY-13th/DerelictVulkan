@@ -25,7 +25,7 @@ void main() {
         SDL_DestroyWindow(sdlWindow);
     }
 
-    const auto availableLayersList      = availableValidationLayers
+    const auto availableLayersList      = availableLayers
         .map!(l => l.layerName).toStrArray;
     const auto availableExtentionsList  = availableExtentions(null)
         .map!(e => e.extensionName).toStrArray;
@@ -41,7 +41,12 @@ void main() {
 
 
     auto vulkan      = defaultAppInfo.initVulkan(extentions,layers);
-    auto physDevice  = vulkan.physicalDevices[0];
+    auto physDevice  = vulkan
+        .physicalDevices
+        .bind!sortByScore
+        .bind!(d => d[0].score > 0
+                  ? d[0].just
+                  : d[0].nothing);
     //writeln("QueueFamilyProperties: ", physDevice.queueFamilyProperties);
     
     const auto availableDeviceExtentions = physDevice.availableExtentions(null)
@@ -51,7 +56,7 @@ void main() {
         .intersect(availableDeviceExtentions);
 
     auto logicDevice  = physDevice.createDevice(deviceExtentions);
-    auto graphQueue   = logicDevice.create!vkGetDeviceQueue(0,0);
+    auto graphQueue   = logicDevice.acquire!vkGetDeviceQueue(0,0);
     scope(exit) {
         vkDestroyDevice(logicDevice, null);
         vkDestroyInstance(vulkan, null);

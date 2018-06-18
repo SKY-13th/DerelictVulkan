@@ -3,6 +3,8 @@ public import utils;
 public import derelict.vulkan;
 
 import std.algorithm.iteration
+     , std.algorithm.sorting
+     , std.functional
      , std.string
      , std.conv
      , std.stdio
@@ -15,30 +17,49 @@ static this() {
     DerelictVulkan.load();
 }
 
-alias defaultAppName = Alias!"Hello Vulkan!";
-immutable VkApplicationInfo defaultAppInfo = {
+enum defaultAppName = "Hello Vulkan!";
+immutable
+VkApplicationInfo defaultAppInfo = {
     sType: VkStructureType.VK_STRUCTURE_TYPE_APPLICATION_INFO,
     apiVersion:       VK_API_VERSION,
     pApplicationName: defaultAppName.ptr,
     pEngineName:      defaultAppName.ptr,
 };
 
-alias surfacePresentations        = enumerate!vkGetPhysicalDeviceSurfacePresentModesKHR;
-alias surfaceFormats              = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
-alias physicalDevices             = enumerate!vkEnumeratePhysicalDevices;
-alias queueFamilyProperties       = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
-alias availableExtentions         = enumerate!vkEnumerateDeviceExtensionProperties;
-alias availableExtentions         = enumerate!vkEnumerateInstanceExtensionProperties;
-alias availableValidationLayers   = enumerate!vkEnumerateInstanceLayerProperties;
-alias swapchainImages             = enumerate!vkGetSwapchainImagesKHR;
+// Instance
+alias availableExtentions   = enumerate!vkEnumerateInstanceExtensionProperties;
+alias availableLayers       = enumerate!vkEnumerateInstanceLayerProperties;
 
-alias surfaceCapabilities = create!vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
+// Surface
+alias surfaceFormats        = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
+alias surfaceCapabilities   = acquire!vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
+alias surfacePresentations  = enumerate!vkGetPhysicalDeviceSurfacePresentModesKHR;
 
-auto properties(VkPhysicalDevice device) {
-    VkPhysicalDeviceProperties properties;
-    vkGetPhysicalDeviceProperties(device, &properties);
-    return properties;
-}
+// Swapchain
+alias swapchainImages       = enumerate!vkGetSwapchainImagesKHR;
+
+// Physical Device
+alias sortByScore           = d => d.sort!((a,b) => a.score < b.score).array.just;
+alias physicalDevices       = enumerate!vkEnumeratePhysicalDevices;
+alias features              = acquire!vkGetPhysicalDeviceFeatures;
+alias properties            = acquire!vkGetPhysicalDeviceProperties;
+alias queueFamilyProperties = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
+alias availableExtentions   = enumerate!vkEnumerateDeviceExtensionProperties;
+alias score                 = memoize!(
+    (VkPhysicalDevice device) {
+        const auto properties = device.properties;
+        const auto features   = device.features;
+        int score;
+        if ( properties.deviceType
+        == VkPhysicalDeviceType.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ) {
+            score += 1000;
+        }
+        score += properties.limits.maxImageDimension2D;
+        if (!features.geometryShader) {
+            return 0;
+        }
+        return score;
+    });
 
 auto initVulkan( in ref VkApplicationInfo appInfo
                , in string[] extentionsList = []
@@ -55,7 +76,7 @@ auto initVulkan( in ref VkApplicationInfo appInfo
         enabledExtensionCount:   extentionsList.length.to!uint,
         ppEnabledExtensionNames: extentionsList.toCStrArray.ptr
     };
-    return create!vkCreateInstance(&instanceInfo, null);
+    return acquire!vkCreateInstance(&instanceInfo, null);
 }
 
 auto createDevice( VkPhysicalDevice physicalDevice
@@ -74,7 +95,7 @@ auto createDevice( VkPhysicalDevice physicalDevice
         enabledExtensionCount:   extentionsList.length.to!uint,
         ppEnabledExtensionNames: extentionsList.toCStrArray.ptr
     };
-    return physicalDevice.create!vkCreateDevice(&deviceInfo, null);
+    return physicalDevice.acquire!vkCreateDevice(&deviceInfo, null);
 }
 
 auto createSurface(VkInstance instance, SDL2WMInfo info) in {
@@ -86,7 +107,7 @@ auto createSurface(VkInstance instance, SDL2WMInfo info) in {
         hwnd:      info.info.win.window,
         hinstance: info.info.win.hinstance
     };
-    return instance.create!vkCreateWin32SurfaceKHR(&surfaceCreateInfo, null);
+    return instance.acquire!vkCreateWin32SurfaceKHR(&surfaceCreateInfo, null);
 }
 
 auto createSwapchain(VkDevice device, VkSurfaceKHR surface) in {
@@ -109,7 +130,7 @@ auto createSwapchain(VkDevice device, VkSurfaceKHR surface) in {
         clipped:      true,
         oldSwapchain: null
     };
-    return device.create!vkCreateSwapchainKHR(&createInfo, null);
+    return device.acquire!vkCreateSwapchainKHR(&createInfo, null);
 }
 
 auto createImageView(VkDevice device, VkImage image) in {
@@ -127,7 +148,7 @@ auto createImageView(VkDevice device, VkImage image) in {
             layerCount: 1
         }
     };
-    return device.create!vkCreateImageView(&createInfo, null);
+    return device.acquire!vkCreateImageView(&createInfo, null);
 }
 
 auto createShaderModule(VkDevice device, string path) {
@@ -138,7 +159,7 @@ auto createShaderModule(VkDevice device, string path) {
         codeSize: data.length.to!uint,
         pCode:    cast(const(uint)*) data.ptr
     };
-    return device.create!vkCreateShaderModule(&createInfo, null);
+    return device.acquire!vkCreateShaderModule(&createInfo, null);
 }
 
 auto createPipeline( VkDevice         device
@@ -206,7 +227,7 @@ auto createPipeline( VkDevice         device
         layout: pipelineLayout,
         renderPass: renderPass
     };
-    return device.create!vkCreateGraphicsPipelines(null, 1, &pipelineInfo, null);
+    return device.acquire!vkCreateGraphicsPipelines(null, 1, &pipelineInfo, null);
 }
 
 auto createPipelineLayout(VkDevice device){
@@ -214,7 +235,7 @@ auto createPipelineLayout(VkDevice device){
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
     };
 
-    return device.create!vkCreatePipelineLayout(&pipelineLayoutInfo, null);
+    return device.acquire!vkCreatePipelineLayout(&pipelineLayoutInfo, null);
 }
 
 auto createRenderPass(VkDevice device, VkPipelineLayout pipeline) in {
@@ -256,7 +277,7 @@ auto createRenderPass(VkDevice device, VkPipelineLayout pipeline) in {
         dependencyCount: 1,
         pDependencies: &dependency
     };
-    return device.create!vkCreateRenderPass(&renderPassInfo, null);
+    return device.acquire!vkCreateRenderPass(&renderPassInfo, null);
 }
 
 auto createFramebuffer( VkDevice     device
@@ -272,7 +293,7 @@ auto createFramebuffer( VkDevice     device
         height: defaultWindowSize.y,
         layers: 1
     };
-    return device.create!vkCreateFramebuffer(&framebufferInfo, null);
+    return device.acquire!vkCreateFramebuffer(&framebufferInfo, null);
 }
 
 auto createCommandPool(VkDevice device){
@@ -280,7 +301,7 @@ auto createCommandPool(VkDevice device){
         sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         queueFamilyIndex: 0
     };
-    return device.create!vkCreateCommandPool(&poolInfo, null);
+    return device.acquire!vkCreateCommandPool(&poolInfo, null);
 }
 
 auto createCommandBuffer(VkDevice device, VkCommandPool commandPool, ulong size) {
@@ -299,5 +320,5 @@ auto createSemaphores(VkDevice device){
     VkSemaphoreCreateInfo semaphoreInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
     };
-    return device.create!vkCreateSemaphore(&semaphoreInfo, null);
+    return device.acquire!vkCreateSemaphore(&semaphoreInfo, null);
 }
