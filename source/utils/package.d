@@ -12,7 +12,10 @@ import derelict.vulkan;
     struct Maybe(T) {
         alias payload this;
         T     payload;
-        bool opCast(T : bool)() inout {
+        ref A opCast(A : T)() {
+            return payload;
+        }
+        bool opCast(A : bool)() inout {
             return _just;
         }
     private:
@@ -27,7 +30,7 @@ import derelict.vulkan;
         return m;
     }
 
-    auto nothing(T)(in ref T example) {
+    auto nothing(T)(in ref T) {
         return Maybe!T(T.init, false);
     }
 

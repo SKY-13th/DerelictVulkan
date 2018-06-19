@@ -34,6 +34,7 @@ alias availableLayers       = enumerate!vkEnumerateInstanceLayerProperties;
 alias surfaceFormats        = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
 alias surfaceCapabilities   = acquire!vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
 alias surfacePresentations  = enumerate!vkGetPhysicalDeviceSurfacePresentModesKHR;
+alias surfaceSupport        = acquire!vkGetPhysicalDeviceSurfaceSupportKHR;
 
 // Swapchain
 alias swapchainImages       = enumerate!vkGetSwapchainImagesKHR;
@@ -175,9 +176,11 @@ auto createPipeline( VkDevice         device
         topology: VkPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
     };
     VkViewport viewport = {
-        width:  defaultWindowSize.x,
-        height: defaultWindowSize.y,
-        maxDepth: 1
+        x:0, y:0,
+        width:  640,
+        height: 480,
+        maxDepth: 1,
+        minDepth: 0
     };
     VkRect2D scissor = {
         extent: VkExtent2D(640, 480)
@@ -263,6 +266,7 @@ auto createRenderPass(VkDevice device, VkPipelineLayout pipeline) in {
     VkSubpassDependency dependency = {
         srcSubpass: VK_SUBPASS_EXTERNAL,
         dstSubpass: 0,
+        dstStageMask: VkPipelineStageFlagBits.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         srcStageMask: VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         srcAccessMask: VkAccessFlagBits.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT 
                      | VkAccessFlagBits.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,

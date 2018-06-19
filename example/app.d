@@ -47,7 +47,7 @@ void main() {
         .bind!(d => d[0].score > 0
                   ? d[0].just
                   : d[0].nothing);
-    //writeln("QueueFamilyProperties: ", physDevice.queueFamilyProperties);
+    writeln("QueueFamilyProperties: ", physDevice.queueFamilyProperties);
     
     const auto availableDeviceExtentions = physDevice.availableExtentions(null)
         .map!(e => e.extensionName).toStrArray;
@@ -61,130 +61,131 @@ void main() {
         vkDestroyDevice(logicDevice, null);
         vkDestroyInstance(vulkan, null);
     }
-    // auto surface      = vulkan.createSurface(sdlInfo);
-    // auto formats      = physDevice.surfaceFormats(surface);
-    // auto capabilities = physDevice.surfaceCapabilities(surface);
-    // auto presentation = physDevice.surfacePresentations(surface);
-    // writeln( "Formats:\n", formats
-    //        , "\nCapabilities:\n", capabilities
-    //        , "\nPresentation:\n", presentation );
+    auto surface      = vulkan.createSurface(sdlInfo);
+    auto support      = physDevice.surfaceSupport(0, surface);
+    auto formats      = physDevice.surfaceFormats(surface);
+    auto capabilities = physDevice.surfaceCapabilities(surface);
+    auto presentation = physDevice.surfacePresentations(surface);
+    writeln( "Formats:\n", formats
+           , "\nCapabilities:\n", capabilities
+           , "\nPresentation:\n", presentation );
 
-    // auto swapchain  = logicDevice.createSwapchain(surface);
-    // auto images     = logicDevice.swapchainImages(swapchain);
-    // auto imageViews = images.map!(i => logicDevice.createImageView(i)).array;
+    auto swapchain  = logicDevice.createSwapchain(surface);
+    auto images     = logicDevice.swapchainImages(swapchain);
+    auto imageViews = images.map!(i => logicDevice.createImageView(i)).array;
     
-    // auto vertModule = logicDevice.createShaderModule("./example/shaders/bin/vert.spv");
-    // auto fragModule = logicDevice.createShaderModule("./example/shaders/bin/frag.spv");
+    auto vertModule = logicDevice.createShaderModule("./example/shaders/bin/vert.spv");
+    auto fragModule = logicDevice.createShaderModule("./example/shaders/bin/frag.spv");
 
-    // VkPipelineShaderStageCreateInfo[2] shaderStages = {
-    //     sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-    //     pName: "main".toStringz
-    // };
-    // shaderStages[0].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT;
-    // shaderStages[1].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT;
-    // shaderStages[0].module_ = vertModule;
-    // shaderStages[1].module_ = fragModule;
+    VkPipelineShaderStageCreateInfo[2] shaderStages = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        pName: "main".toStringz
+    };
+    shaderStages[0].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT;
+    shaderStages[1].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderStages[0].module_ = vertModule;
+    shaderStages[1].module_ = fragModule;
 
-    // scope(exit) {
-    //     vkDestroyShaderModule(logicDevice, vertModule, null);
-    //     vkDestroyShaderModule(logicDevice, fragModule, null);
-    //     foreach(view; imageViews) {
-    //         vkDestroyImageView(logicDevice, view, null);
-    //     }
-    //     vkDestroySwapchainKHR(logicDevice, swapchain, null);
-    // }
+    scope(exit) {
+        vkDestroyShaderModule(logicDevice, vertModule, null);
+        vkDestroyShaderModule(logicDevice, fragModule, null);
+        foreach(view; imageViews) {
+            vkDestroyImageView(logicDevice, view, null);
+        }
+        vkDestroySwapchainKHR(logicDevice, swapchain, null);
+    }
 
-    // //////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
 
-    // auto layout       = logicDevice.createPipelineLayout;
-    // auto renderpass   = logicDevice.createRenderPass(layout);
-    // auto pipeline     = logicDevice.createPipeline(layout,renderpass,shaderStages);
-    // auto framebuffers = imageViews
-    //     .map!( v => logicDevice.createFramebuffer(renderpass, v)).array;
-    // auto commandPool  = logicDevice.createCommandPool;
-    // auto commandBuffs = logicDevice.createCommandBuffer(commandPool, framebuffers.length);
-    // scope(exit) {
-    //     vkDestroyCommandPool(logicDevice, commandPool, null);
-    //     foreach(buff; framebuffers) {
-    //         vkDestroyFramebuffer(logicDevice, buff, null);
-    //     }
-    //     vkDestroyPipeline(logicDevice, pipeline, null);
-    //     vkDestroyRenderPass(logicDevice, renderpass, null);
-    //     vkDestroyPipelineLayout(logicDevice, layout, null);
-    // }
+    auto layout       = logicDevice.createPipelineLayout;
+    auto renderpass   = logicDevice.createRenderPass(layout);
+    auto pipeline     = logicDevice.createPipeline(layout,renderpass,shaderStages);
+    auto framebuffers = imageViews
+        .map!( v => logicDevice.createFramebuffer(renderpass, v)).array;
+    auto commandPool  = logicDevice.createCommandPool;
+    auto commandBuffs = logicDevice.createCommandBuffer(commandPool, framebuffers.length);
+    scope(exit) {
+        vkDestroyCommandPool(logicDevice, commandPool, null);
+        foreach(buff; framebuffers) {
+            vkDestroyFramebuffer(logicDevice, buff, null);
+        }
+        vkDestroyPipeline(logicDevice, pipeline, null);
+        vkDestroyRenderPass(logicDevice, renderpass, null);
+        vkDestroyPipelineLayout(logicDevice, layout, null);
+    }
 
-    // foreach (i, buffer; commandBuffs) {
-    //     VkCommandBufferBeginInfo beginInfo = {
-    //         sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-    //         flags: VkCommandBufferUsageFlagBits.VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT
-    //     };
+    foreach (i, buffer; commandBuffs) {
+        VkCommandBufferBeginInfo beginInfo = {
+            sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            flags: VkCommandBufferUsageFlagBits.VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT
+        };
 
-    //     if (vkBeginCommandBuffer(buffer, &beginInfo) != VkResult.VK_SUCCESS) {
-    //         writeln("ERROR! Start");
-    //     }
+        if (vkBeginCommandBuffer(buffer, &beginInfo) != VkResult.VK_SUCCESS) {
+            writeln("ERROR! Start");
+        }
 
-    //     VkClearValue clearColor;
-    //     clearColor.color.float32 = [0.0f, 0.0f, 0.0f, 1.0f];
-    //     VkRenderPassBeginInfo renderPassInfo = {
-    //         sType: VkStructureType.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    //         renderPass:  renderpass,
-    //         framebuffer: framebuffers[i],
-    //         renderArea:{{0, 0},VkExtent2D(640, 480)},
-    //         clearValueCount: 1,
-    //         pClearValues: &clearColor
-    //     };
-    //     vkCmdBeginRenderPass(buffer, &renderPassInfo, VkSubpassContents.VK_SUBPASS_CONTENTS_INLINE);
-    //     vkCmdBindPipeline(buffer, VkPipelineBindPoint.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    //     vkCmdDraw(buffer, 3, 1, 0, 0);
-    //     vkCmdEndRenderPass(buffer);
-    //     if (vkEndCommandBuffer(buffer) != VkResult.VK_SUCCESS) {
-    //         writeln("ERROR! end");
-    //     }
-    // }
+        VkClearValue clearColor;
+        clearColor.color.float32 = [0.0f, 0.0f, 0.0f, 1.0f];
+        VkRenderPassBeginInfo renderPassInfo = {
+            sType: VkStructureType.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            renderPass:  renderpass,
+            framebuffer: framebuffers[i],
+            renderArea:{{0, 0},VkExtent2D(640, 480)},
+            clearValueCount: 1,
+            pClearValues: &clearColor
+        };
+        vkCmdBeginRenderPass(buffer, &renderPassInfo, VkSubpassContents.VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(buffer, VkPipelineBindPoint.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        vkCmdDraw(buffer, 3, 1, 0, 0);
+        vkCmdEndRenderPass(buffer);
+        if (vkEndCommandBuffer(buffer) != VkResult.VK_SUCCESS) {
+            writeln("ERROR! end");
+        }
+    }
 
-    // auto imageAvailableSemaphore = logicDevice.createSemaphores;
-    // auto renderFinishedSemaphore = logicDevice.createSemaphores;
-    // scope(exit){
-    //     vkDestroySemaphore(logicDevice, renderFinishedSemaphore, null);
-    //     vkDestroySemaphore(logicDevice, imageAvailableSemaphore, null);
-    // }
+    auto imageAvailableSemaphore = logicDevice.createSemaphores;
+    auto renderFinishedSemaphore = logicDevice.createSemaphores;
+    scope(exit){
+        vkDestroySemaphore(logicDevice, renderFinishedSemaphore, null);
+        vkDestroySemaphore(logicDevice, imageAvailableSemaphore, null);
+    }
 
-    // (event){
-    //     //{ //draw
-    //         uint imageIndex;
-    //         VkResult result;
-    //         result = vkAcquireNextImageKHR(logicDevice, swapchain, ulong.max, imageAvailableSemaphore, null, &imageIndex);
-    //         if(result != VkResult.VK_SUCCESS){
-    //             throw new StringException(imageIndex.to!string ~ result.to!string);
-    //         }
-    //         VkSemaphore[]          waitSemaphores   = [imageAvailableSemaphore];
-    //         VkPipelineStageFlags[] waitStages       = [VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT];
-    //         VkSemaphore[]          signalSemaphores = [renderFinishedSemaphore];
-    //         VkSubmitInfo submitInfo = {
-    //             sType: VkStructureType.VK_STRUCTURE_TYPE_SUBMIT_INFO,
-    //             waitSemaphoreCount: 1,
-    //             pWaitSemaphores:    waitSemaphores.ptr,
-    //             pWaitDstStageMask:  waitStages.ptr,
-    //             commandBufferCount: 1,
-    //             pCommandBuffers: &commandBuffs[imageIndex],
-    //             signalSemaphoreCount: 1,
-    //             pSignalSemaphores: signalSemaphores.ptr
-    //         };
-    //         result = vkQueueSubmit(graphQueue, 1, &submitInfo, null);
-    //         if(result != VkResult.VK_SUCCESS){
-    //             throw new StringException(result.to!string);
-    //         }
+    (event){
+        //{ //draw
+            uint imageIndex;
+            VkResult result;
+            result = vkAcquireNextImageKHR(logicDevice, swapchain, ulong.max, imageAvailableSemaphore, null, &imageIndex);
+            if(result != VkResult.VK_SUCCESS){
+                throw new StringException(imageIndex.to!string ~ result.to!string);
+            }
+            VkSemaphore[]          waitSemaphores   = [imageAvailableSemaphore];
+            VkPipelineStageFlags[] waitStages       = [VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT];
+            VkSemaphore[]          signalSemaphores = [renderFinishedSemaphore];
+            VkSubmitInfo submitInfo = {
+                sType: VkStructureType.VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                waitSemaphoreCount: 1,
+                pWaitSemaphores:    waitSemaphores.ptr,
+                pWaitDstStageMask:  waitStages.ptr,
+                commandBufferCount: 1,
+                pCommandBuffers: &commandBuffs[imageIndex],
+                signalSemaphoreCount: 1,
+                pSignalSemaphores: signalSemaphores.ptr
+            };
+            result = vkQueueSubmit(graphQueue, 1, &submitInfo, null);
+            if(result != VkResult.VK_SUCCESS){
+                throw new StringException(result.to!string);
+            }
 
-    //         VkSwapchainKHR[] swapChains = [swapchain];
-    //         VkPresentInfoKHR presentInfo = {
-    //             sType: VkStructureType.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-    //             waitSemaphoreCount: 1,
-    //             pWaitSemaphores: signalSemaphores.ptr,
-    //             swapchainCount: 1,
-    //             pSwapchains: swapChains.ptr,
-    //             pImageIndices: &imageIndex,
-    //         };
-    //         vkQueuePresentKHR(graphQueue, &presentInfo);
-    //     //}
-    // }.eventLoop;
+            VkSwapchainKHR[] swapChains = [swapchain];
+            VkPresentInfoKHR presentInfo = {
+                sType: VkStructureType.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                waitSemaphoreCount: 1,
+                pWaitSemaphores: signalSemaphores.ptr,
+                swapchainCount: 1,
+                pSwapchains: swapChains.ptr,
+                pImageIndices: &imageIndex,
+            };
+            vkQueuePresentKHR(graphQueue, &presentInfo);
+        //}
+    }.eventLoop;
 }
