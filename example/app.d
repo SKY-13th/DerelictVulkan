@@ -49,21 +49,19 @@ void main() {
     auto physDevice = vulkan
         .bind!physicalDevices
         .bind!sortByScore
-        .expect!( d => d[0].score > 0
+        .demand!( d => d[0].score > 0
                 ? d[0].just
                 : nothing!(typeof(d[0]))
                 , "No suitable device found" );
-    auto queueFamilies = physDevice
-        .bind!queueFamilyProperties;
-    auto queueFamilyIndex = queueFamilies
-        .bind!queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT);
-    writeln("QueueFamily: ", queueFamilies[queueFamilyIndex]);
+    const auto queueFamilyIndex = physDevice
+        .queueFamilyProperties
+        .queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT);
     
     const auto availableDeviceExtentions = physDevice.availableExtentions(null)
         .map!(e => e.extensionName).toStrArray;
     const auto deviceExtentions = desiredDeviceExtentions
         .intersect(availableDeviceExtentions)
-        .expect!(e => e.length > 0, "No swapchain extension available");
+        .demand!(e => e.length > 0, "No swapchain extension available");
 
     writeln("\nAvailable device extentions:\n", availableDeviceExtentions, '\n');
     writeln("Use device extentions: \n", deviceExtentions);
@@ -71,7 +69,7 @@ void main() {
 
     ///////////////////////////////////////////////////////////////
     // Create Logical Device
-    auto logicDevice = physDevice.createDevice(deviceExtentions);
+    auto logicDevice = physDevice.createDevice(queueFamilyIndex.to!uint, deviceExtentions);
     auto graphQueue  = logicDevice.acquire!vkGetDeviceQueue(0,0);
     scope(exit) {
         vkDestroyDevice(logicDevice, null);

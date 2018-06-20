@@ -48,20 +48,26 @@ import derelict.vulkan;
     }
 }
 
-auto expect(alias F,string info, M : Maybe!T, T)(M a) {
+auto demand(alias F, string info = "", M : Maybe!T, T)(M a) {
+    import std.exception;
     auto result = F(a);
-    assert(result, info);
+    debug { assert (result, info); }
+    else  { enforce(result, info); }
     return result;
 }
 
-auto expect(alias F,string info,T)(T a){
-    assert(F(a), info);
+auto demand(alias F, string info = "", T)(T a) {
+    import std.exception;
+    debug { assert (F(a), info); }
+    else  { enforce(F(a), info); }
     return a;
 }
 
-auto expect(string info,T)(T a)
-if(is(T:bool) || isMaybe!T) {
-    assert(a, info);
+auto demand(string info, T)(T a)
+    if(is(T:bool) || isMaybe!T) {
+    import std.exception;
+    debug { assert (a, info); }
+    else  { enforce(a, info); }
     return a;
 }
 

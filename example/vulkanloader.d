@@ -82,11 +82,12 @@ auto initVulkan( in ref VkApplicationInfo appInfo
 }
 
 auto createDevice( VkPhysicalDevice physicalDevice
+                 , uint             queueFamilyIndex
                  , in string[]      extentionsList = [] ) {
     auto queuePriorities = [1.0f];
     VkDeviceQueueCreateInfo deviceQueueInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        queueFamilyIndex: 0,
+        queueFamilyIndex: queueFamilyIndex,
         queueCount:       1,
         pQueuePriorities: queuePriorities.ptr
     };
