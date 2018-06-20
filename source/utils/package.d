@@ -48,12 +48,29 @@ import derelict.vulkan;
     }
 }
 
+auto expect(alias F,string info, M : Maybe!T, T)(M a) {
+    auto result = F(a);
+    assert(result, info);
+    return result;
+}
+
+auto expect(alias F,string info,T)(T a){
+    assert(F(a), info);
+    return a;
+}
+
+auto expect(string info,T)(T a)
+if(is(T:bool) || isMaybe!T) {
+    assert(a, info);
+    return a;
+}
+
 auto bind(alias F, T, Args...)(auto ref Maybe!T maybe, Args args) {
     alias Result = typeof(F(maybe.payload, args));
-    static if( is(Result : bool) ) {
+    static if( is(Result == bool) ) {
         return maybe ? F(maybe.payload, args) : false;
     } else {
-        return maybe ? F(maybe.payload, args) : nothing!Result;
+        return maybe ? F(maybe.payload, args).just : nothing!Result;
     }
 }
 

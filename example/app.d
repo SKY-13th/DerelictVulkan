@@ -17,6 +17,8 @@ enum desiredLayers              =   [ "VK_LAYER_LUNARG_standard_validation"
                                     , "VK_LAYER_RENDERDOC_Capture" ];
 
 void main() {
+    ///////////////////////////////////////////////////////////////
+    // Init SDL
     auto sdlWindow   = defaultAppName.createWindow;
     auto sdlRenderer = sdlWindow.createRenderer;
     auto sdlInfo     = sdlWindow.info;
@@ -25,43 +27,52 @@ void main() {
         SDL_DestroyWindow(sdlWindow);
     }
 
-    const auto availableLayersList      = availableLayers
+
+    ///////////////////////////////////////////////////////////////
+    // Prepair Layers and Extentions lists
+    const auto availableLayersList     = availableLayers
         .map!(l => l.layerName).toStrArray;
-    const auto availableExtentionsList  = availableExtentions(null)
+    const auto availableExtentionsList = availableExtentions(null)
         .map!(e => e.extensionName).toStrArray;
 
     writeln("Available layers:\n"    , availableLayersList);
-    writeln("Available extentions:\n", availableExtentionsList);
+    writeln("Available extentions:\n", availableExtentionsList, '\n');
     writeln();
 
-    const auto extentions = desiredExtentions
-        .intersect(availableExtentionsList);
-    const auto layers = desiredLayers
-        .intersect(availableLayersList);
+    const auto extentions = desiredExtentions.intersect(availableExtentionsList);
+    const auto layers     = desiredLayers.intersect(availableLayersList);
 
 
-    auto vulkan      = defaultAppInfo.initVulkan(extentions,layers);
-    auto physDevice  = vulkan
+    ///////////////////////////////////////////////////////////////
+    // Create Vulkan instance and pick Device
+    auto vulkan     = defaultAppInfo.initVulkan(extentions,layers);
+    auto physDevice = vulkan
         .bind!physicalDevices
         .bind!sortByScore
-        .bind!(d => d[0].score > 0
-                  ? d[0].just
-                  : nothing!(typeof(d[0])));
+        .expect!( d => d[0].score > 0
+                ? d[0].just
+                : nothing!(typeof(d[0]))
+                , "No suitable device found" );
     auto queueFamilies = physDevice
         .bind!queueFamilyProperties;
     auto queueFamilyIndex = queueFamilies
         .bind!queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT);
-    // assert(queueFamilyIndex < queueFamilies.length, "Device have no ")
     writeln("QueueFamily: ", queueFamilies[queueFamilyIndex]);
     
     const auto availableDeviceExtentions = physDevice.availableExtentions(null)
         .map!(e => e.extensionName).toStrArray;
-    writeln("Available device extentions:\n", availableDeviceExtentions, "\n");
-    const auto deviceExtentions = [ VK_KHR_SWAPCHAIN_EXTENSION_NAME ]
-        .intersect(availableDeviceExtentions);
+    const auto deviceExtentions = desiredDeviceExtentions
+        .intersect(availableDeviceExtentions)
+        .expect!(e => e.length > 0, "No swapchain extension available");
 
-    auto logicDevice  = physDevice.createDevice(deviceExtentions);
-    auto graphQueue   = logicDevice.acquire!vkGetDeviceQueue(0,0);
+    writeln("\nAvailable device extentions:\n", availableDeviceExtentions, '\n');
+    writeln("Use device extentions: \n", deviceExtentions);
+
+
+    ///////////////////////////////////////////////////////////////
+    // Create Logical Device
+    auto logicDevice = physDevice.createDevice(deviceExtentions);
+    auto graphQueue  = logicDevice.acquire!vkGetDeviceQueue(0,0);
     scope(exit) {
         vkDestroyDevice(logicDevice, null);
         vkDestroyInstance(vulkan, null);
