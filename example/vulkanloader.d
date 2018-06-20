@@ -4,6 +4,7 @@ public import derelict.vulkan;
 
 import std.algorithm.iteration
      , std.algorithm.sorting
+     , std.algorithm.searching
      , std.functional
      , std.string
      , std.conv
@@ -48,19 +49,19 @@ alias queueFamilyProperties = enumerate!vkGetPhysicalDeviceQueueFamilyProperties
 alias availableExtentions   = enumerate!vkEnumerateDeviceExtensionProperties;
 alias score                 = memoize!(
     (VkPhysicalDevice device) {
-        const auto properties = device.properties;
-        const auto features   = device.features;
-        int score;
-        if ( properties.deviceType
-        == VkPhysicalDeviceType.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ) {
-            score += 1000;
-        }
-        score += properties.limits.maxImageDimension2D;
-        if (!features.geometryShader) {
-            return 0;
-        }
-        return score;
+        return device.queueFamilyProperties
+            .bind!( q => q.queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT).just )
+            .bind!( i => device.features.geometryShader 
+                  ? device.properties.just
+                  : nothing!(typeof(device.properties)))
+            .bind!((properties) {
+                bool isDiscreteGPU = properties.deviceType == VkPhysicalDeviceType.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+                return properties.limits.maxImageDimension2D
+                     + isDiscreteGPU ? 1000 : 0;
+            });
     });
+
+alias queueFamilyIndex = (ques,queBit) => ques.countUntil!(q => q.queueCount > 0 && q.queueFlags & queBit);
 
 auto initVulkan( in ref VkApplicationInfo appInfo
                , in string[] extentionsList = []
@@ -199,7 +200,8 @@ auto createPipeline( VkDevice         device
         polygonMode: VkPolygonMode.VK_POLYGON_MODE_FILL,
         lineWidth: 1.0f,
         cullMode: VkCullModeFlagBits.VK_CULL_MODE_NONE,
-        frontFace: VkFrontFace.VK_FRONT_FACE_CLOCKWISE
+        frontFace: VkFrontFace.VK_FRONT_FACE_CLOCKWISE,
+        depthBiasClamp: .0f
     };
 
     VkPipelineMultisampleStateCreateInfo multisampling = {

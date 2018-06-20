@@ -30,26 +30,31 @@ import derelict.vulkan;
         return m;
     }
 
-    auto nothing(T)(in ref T) {
-        return Maybe!T(T.init, false);
+    template isMaybe(Type) {
+        enum isMaybe = false;
     }
 
-    auto nothing(T)() {
-        return Maybe!T(T.init, false);
+    template isMaybe(M: Maybe!T, T) {
+        enum isMaybe = true;
     }
 
-    auto nothing(alias example)() {
-        return nothing!(typeof(example));
+    template nothing(alias example) {
+        alias Type   = Select!(isType!example, example, typeof(example));
+        enum nothing = nothing!Type;
     }
 
-    auto nothing(M: Maybe!T, T)() {
-        return M(T.init, false);
+    template nothing(Type) {
+        enum nothing = select!(isMaybe!Type)(Type.init, Maybe!Type.init);
     }
 }
 
-auto bind(alias F, T)(auto ref Maybe!T maybe) {
-    alias Result = typeof(F(maybe.payload));
-    return maybe ? F(maybe.payload) : nothing!Result;
+auto bind(alias F, T, Args...)(auto ref Maybe!T maybe, Args args) {
+    alias Result = typeof(F(maybe.payload, args));
+    static if( is(Result : bool) ) {
+        return maybe ? F(maybe.payload, args) : false;
+    } else {
+        return maybe ? F(maybe.payload, args) : nothing!Result;
+    }
 }
 
 //////////////////////////////////////////////////////////////
@@ -68,15 +73,15 @@ template acquire(alias creator) {
         Target target;
         static if(isReturn) {
             const auto result = creator(args, &target);
+            writeln( "Create `"   , Target.stringof
+                   , "`| result: ", result );
+            return result.to!bool
+                ? target.just
+                : nothing!Target;
         } else {
             creator(args, &target);
-            const auto result = target;
+            return target;
         }
-        writeln( "Create `"   , Target.stringof
-               , "`| result: ", result );
-        return result.to!bool
-             ? target.just
-             : nothing!Target;
     }
 
     T to(T: bool, A)(A a) pure nothrow {
