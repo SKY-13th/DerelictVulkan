@@ -36,32 +36,38 @@ alias surfaceFormats        = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
 alias surfaceCapabilities   = acquire!vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
 alias surfacePresentations  = enumerate!vkGetPhysicalDeviceSurfacePresentModesKHR;
 alias surfaceSupport        = acquire!vkGetPhysicalDeviceSurfaceSupportKHR;
-
+alias surfaceSupport        =
+    (VkPhysicalDevice device, surface,uint queueFlag) {
+        auto properties = device.queueFamilyProperties;
+        auto index      = properties.queueFamilyIndex(queueFlag);
+        return index < properties.length
+            && device.surfaceSupport(index, surface);
+    };
 // Swapchain
 alias swapchainImages       = enumerate!vkGetSwapchainImagesKHR;
 
 // Physical Device
-alias sortByScore           = d => d.sort!((a,b) => a.score < b.score).array.just;
+alias sortByScore           = d => d.sort!((a,b) => a.score < b.score).array;
 alias physicalDevices       = enumerate!vkEnumeratePhysicalDevices;
 alias features              = acquire!vkGetPhysicalDeviceFeatures;
 alias properties            = acquire!vkGetPhysicalDeviceProperties;
 alias queueFamilyProperties = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
 alias availableExtentions   = enumerate!vkEnumerateDeviceExtensionProperties;
-alias score                 = memoize!(
+alias score                 = 
     (VkPhysicalDevice device) {
         return device.queueFamilyProperties
-            .bind!( q => q.queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT).just )
-            .bind!( i => device.features.geometryShader 
+            .bind!( q => q.queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT) )
+            .bind!( _ => device.features.geometryShader 
                   ? device.properties.just
                   : nothing!(typeof(device.properties)))
             .bind!((properties) {
                 bool isDiscreteGPU = properties.deviceType == VkPhysicalDeviceType.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
                 return properties.limits.maxImageDimension2D
-                     + isDiscreteGPU ? 1000 : 0;
+                     + ( isDiscreteGPU ? 1000 : 0 );
             });
-    });
+    };
 
-alias queueFamilyIndex = (ques,queBit) => ques.countUntil!(q => q.queueCount > 0 && q.queueFlags & queBit);
+alias queueFamilyIndex = (ques,queBit) => cast(uint)ques.countUntil!(q => q.queueCount > 0 && q.queueFlags & queBit);
 
 auto initVulkan( in ref VkApplicationInfo appInfo
                , in string[] extentionsList = []
@@ -303,10 +309,10 @@ auto createFramebuffer( VkDevice     device
     return device.acquire!vkCreateFramebuffer(&framebufferInfo, null);
 }
 
-auto createCommandPool(VkDevice device){
+auto createCommandPool(VkDevice device, uint queueFamilyIndex){
     VkCommandPoolCreateInfo poolInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        queueFamilyIndex: 0
+        queueFamilyIndex: queueFamilyIndex
     };
     return device.acquire!vkCreateCommandPool(&poolInfo, null);
 }

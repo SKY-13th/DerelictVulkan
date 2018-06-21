@@ -1,29 +1,52 @@
 module utils;
-import std.range.primitives
+import std.range
      , std.algorithm.iteration
+     , std.functional
      , std.traits
      , std.conv
      , std.string
      , std.array;
 import derelict.vulkan;
 
-@safe @nogc pure nothrow {
+pure nothrow {
 
     struct Maybe(T) {
+        this(T p) {
+            payload = p;
+            static if(!isRange && !isPtr) {
+                _value = true;
+            }
+        }
         alias payload this;
         T     payload;
-        ref A opCast(A : T)() {
+        ref A opCast(A : T)() inout {
             return payload;
         }
-        bool opCast(A : bool)() inout {
-            return _just;
+
+        private {
+            enum bool isRange = isInputRange!(Unqual!T);
+            enum bool isPtr   = isPointer!(Unqual!T);
         }
-    private:
-        bool  _just;
+
+        static if (isRange) {
+            private enum bool isConstAble = __traits(compiles, ConstOf!T.init.empty);
+            static if(isConstAble) {
+                private bool _just() inout { return !payload.empty; }
+            } else {
+                private bool _just() { return !payload.empty; }
+            }
+        } else static if(isPtr) {
+            private bool _just() inout { return cast(bool)payload; }
+        } else {
+            private bool _just() inout { return _value; }
+            private bool _value = false;
+        }
+
+        alias opCast(A : bool) =  _just;
     }
 
     auto just(T)(T t) {
-        return Maybe!T(t, true);
+        return Maybe!T(t);
     }
 
     auto just(M: Maybe!T, T)(M m) {
@@ -48,15 +71,14 @@ import derelict.vulkan;
     }
 }
 
-auto demand(alias F, string info = "", M : Maybe!T, T)(M a) {
+auto demand(alias F, string info = "", A: Maybe!T, T)(A a) if(isCallable!F) {
     import std.exception;
-    auto result = F(a);
-    debug { assert (result, info); }
-    else  { enforce(result, info); }
-    return result;
+    debug { assert (a && F(a), info); }
+    else  { enforce(a && F(a), info); }
+    return a;
 }
 
-auto demand(alias F, string info = "", T)(T a) {
+auto demand(alias F, string info = "", T)(T a) if(isCallable!F) {
     import std.exception;
     debug { assert (F(a), info); }
     else  { enforce(F(a), info); }
@@ -79,7 +101,6 @@ auto bind(alias F, T, Args...)(auto ref Maybe!T maybe, Args args) {
         return maybe ? F(maybe.payload, args).just : nothing!Result;
     }
 }
-
 //////////////////////////////////////////////////////////////
 
 template acquire(alias creator) {
@@ -89,6 +110,7 @@ template acquire(alias creator) {
                  , "Creator should match patern: `creator(..., Target*)`!" );
     alias Target   = PointerTarget!(Parameters!creator[$-1]);
     enum  isReturn = !is( ReturnType!creator == void );
+    enum  isBool   = is(Target == VkBool32);
 
     auto acquire(Args...)(Args args)
     if(__traits(compiles, creator(args, null)))
@@ -98,9 +120,13 @@ template acquire(alias creator) {
             const auto result = creator(args, &target);
             writeln( "Create `"   , Target.stringof
                    , "`| result: ", result );
-            return result.to!bool
-                ? target.just
-                : nothing!Target;
+            static if(isBool) {
+                return result.to!bool && target;
+            } else {
+                return result.to!bool
+                     ? target.just
+                     : nothing!Target;
+            }
         } else {
             creator(args, &target);
             return target;
