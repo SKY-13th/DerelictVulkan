@@ -71,14 +71,14 @@ pure nothrow {
     }
 }
 
-auto demand(alias F, string info = "", A: Maybe!T, T)(A a) if(isCallable!F) {
+auto demand(alias F, string info = "", A: Maybe!T, T)(A a) if(__traits(compiles, F(a))) {
     import std.exception;
     debug { assert (a && F(a), info); }
     else  { enforce(a && F(a), info); }
     return a;
 }
 
-auto demand(alias F, string info = "", T)(T a) if(isCallable!F) {
+auto demand(alias F, string info = "", T)(T a) if(__traits(compiles, F(a))) {
     import std.exception;
     debug { assert (F(a), info); }
     else  { enforce(F(a), info); }

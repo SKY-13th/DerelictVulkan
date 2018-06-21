@@ -36,15 +36,25 @@ alias surfaceFormats        = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
 alias surfaceCapabilities   = acquire!vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
 alias surfacePresentations  = enumerate!vkGetPhysicalDeviceSurfacePresentModesKHR;
 alias surfaceSupport        = acquire!vkGetPhysicalDeviceSurfaceSupportKHR;
-alias surfaceSupport        =
-    (VkPhysicalDevice device, surface,uint queueFlag) {
-        auto properties = device.queueFamilyProperties;
-        auto index      = properties.queueFamilyIndex(queueFlag);
-        return index < properties.length
-            && device.surfaceSupport(index, surface);
-    };
+alias isSurfaceSupported    = (device, surface, queueFlag) =>
+    device.surfaceFormats(surface)
+        .bind!( _ => device.surfacePresentations(surface) )
+        .bind!((_) {
+            auto properties = device.queueFamilyProperties;
+            auto index      = properties.queueFamilyIndex(queueFlag);
+            return index < properties.length
+                && device.surfaceSupport(index, surface);
+        });
+
+alias hasSurfaceFormat  = (device, surface, desired) =>
+        device.surfaceFormats(surface)
+            .bind!( formats => ( formats.length == 1
+                 && formats.front.format == VkFormat.VK_FORMAT_UNDEFINED )
+                 || formats.any!(a => a == desired) );
+
+
 // Swapchain
-alias swapchainImages       = enumerate!vkGetSwapchainImagesKHR;
+alias swapchainImages   = enumerate!vkGetSwapchainImagesKHR;
 
 // Physical Device
 alias sortByScore           = d => d.sort!((a,b) => a.score < b.score).array;
@@ -53,19 +63,17 @@ alias features              = acquire!vkGetPhysicalDeviceFeatures;
 alias properties            = acquire!vkGetPhysicalDeviceProperties;
 alias queueFamilyProperties = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
 alias availableExtentions   = enumerate!vkEnumerateDeviceExtensionProperties;
-alias score                 = 
-    (VkPhysicalDevice device) {
-        return device.queueFamilyProperties
-            .bind!( q => q.queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT) )
-            .bind!( _ => device.features.geometryShader 
-                  ? device.properties.just
-                  : nothing!(typeof(device.properties)))
-            .bind!((properties) {
-                bool isDiscreteGPU = properties.deviceType == VkPhysicalDeviceType.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
-                return properties.limits.maxImageDimension2D
-                     + ( isDiscreteGPU ? 1000 : 0 );
-            });
-    };
+alias score                 = (VkPhysicalDevice device) =>
+    device.queueFamilyProperties
+        .bind!( q => q.queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT) )
+        .bind!( _ => device.features.geometryShader 
+                ? device.properties.just
+                : nothing!(typeof(device.properties)))
+        .bind!((properties) {
+            bool isDiscreteGPU = properties.deviceType == VkPhysicalDeviceType.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+            return properties.limits.maxImageDimension2D
+                    + ( isDiscreteGPU ? 1000 : 0 );
+        });
 
 alias queueFamilyIndex = (ques,queBit) => cast(uint)ques.countUntil!(q => q.queueCount > 0 && q.queueFlags & queBit);
 
@@ -119,7 +127,7 @@ auto createSurface(VkInstance instance, SDL2WMInfo info) in {
     return instance.acquire!vkCreateWin32SurfaceKHR(&surfaceCreateInfo, null);
 }
 
-auto createSwapchain(VkDevice device, VkSurfaceKHR surface) in {
+auto createSwapchain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR format) in {
     assert(device);
     assert(surface);
 } do {
@@ -129,8 +137,8 @@ auto createSwapchain(VkDevice device, VkSurfaceKHR surface) in {
         imageExtent: VkExtent2D(640, 480),
         minImageCount:    3,
         imageArrayLayers: 1,
-        imageFormat:      VkFormat.VK_FORMAT_B8G8R8A8_UNORM,
-        imageColorSpace:  VkColorSpaceKHR.VK_COLORSPACE_SRGB_NONLINEAR_KHR,
+        imageFormat:      format.format,
+        imageColorSpace:  format.colorSpace,
         imageUsage:       VkImageUsageFlagBits.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         imageSharingMode: VkSharingMode.VK_SHARING_MODE_EXCLUSIVE,
         preTransform:     VkSurfaceTransformFlagBitsKHR.VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,

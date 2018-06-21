@@ -15,7 +15,12 @@ enum desiredLayers              =   [ "VK_LAYER_LUNARG_standard_validation"
                                     , "VK_LAYER_LUNARG_parameter_validation"
                                     , "VK_LAYER_LUNARG_monitor"
                                     , "VK_LAYER_RENDERDOC_Capture" ];
-enum queueFlag  = VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT;
+enum queueFlag      = VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT;
+enum desiredFormat  = VkSurfaceFormatKHR(
+    VkFormat.VK_FORMAT_B8G8R8A8_UNORM, 
+    VkColorSpaceKHR.VK_COLORSPACE_SRGB_NONLINEAR_KHR);
+
+
 void main() {
     ///////////////////////////////////////////////////////////////
     // Init SDL
@@ -45,51 +50,48 @@ void main() {
 
     ///////////////////////////////////////////////////////////////
     // Create Vulkan instance and pick Device
-    auto vulkan  = defaultAppInfo.initVulkan(extentions,layers);
-    auto surface = vulkan.createSurface(sdlInfo);
-    auto device  = vulkan
+    auto vulkan       = defaultAppInfo.initVulkan(extentions,layers);
+    scope(exit) vkDestroyInstance(vulkan, null);
+    auto surface      = vulkan.createSurface(sdlInfo);
+    auto targetDevice = vulkan
         .bind!physicalDevices
         .bind!sortByScore
         .bind!(filter!(d => d.score > 0))
-        .bind!(filter!(d => d.surfaceSupport(surface, queueFlag)))
+        .bind!(filter!(d => d.isSurfaceSupported(surface, queueFlag)))
         .demand!"No suitable device found"
         .front;
-    const auto queueFamilyIndex = device
+
+    const auto queueFamilyIndex = targetDevice
         .queueFamilyProperties
         .queueFamilyIndex(queueFlag);
     
-    // const auto availableDeviceExtentions = device.availableExtentions(null)
-    //     .map!(e => e.extensionName).toStrArray;
-    // const auto deviceExtentions = desiredDeviceExtentions
-    //     .intersect(availableDeviceExtentions)
-    //     .demand!(e => e.length > 0, "No swapchain extension available");
+    const auto availableDeviceExtentions = targetDevice.availableExtentions(null)
+        .map!(e => e.extensionName).toStrArray;
+    const auto deviceExtentions = desiredDeviceExtentions
+        .intersect(availableDeviceExtentions)
+        .demand!(e => e.length > 0, "No swapchain extension available");
 
-    // writeln("\nAvailable device extentions:\n", availableDeviceExtentions, '\n');
-    // writeln("Use device extentions: \n", deviceExtentions);
+    writeln("\nAvailable device extentions:\n", availableDeviceExtentions, '\n');
+    writeln("Use device extentions: \n", deviceExtentions);
 
 
-    // ///////////////////////////////////////////////////////////////
-    // // Create Logical Device
-    // auto device     = device.createDevice(queueFamilyIndex.to!uint, deviceExtentions);
-    // auto graphQueue = device.acquire!vkGetDeviceQueue(0,0);
-    // scope(exit) {
-    //     vkDestroyDevice(device, null);
-    //     vkDestroyInstance(vulkan, null);
-    // }
+    ///////////////////////////////////////////////////////////////
+    // Create Logical Device
+    auto device     = targetDevice.createDevice(queueFamilyIndex, deviceExtentions);
+    auto graphQueue = device.acquire!vkGetDeviceQueue(queueFamilyIndex, 0);
+    scope(exit) vkDestroyDevice(device, null);
+
+    auto format     = targetDevice
+        .hasSurfaceFormat(surface, desiredFormat)
+            ? desiredFormat
+            : targetDevice.surfaceFormats(surface).front;
+    auto swapchain  = device.createSwapchain(surface, format);
+    scope(exit) vkDestroySwapchainKHR(device, swapchain, null);
+//     auto images     = targetDevice.swapchainImages(swapchain);
+//     auto imageViews = images.map!(i => targetDevice.createImageView(i)).array;
     
-//     auto formats      = device.surfaceFormats(surface);
-//     auto capabilities = device.surfaceCapabilities(surface);
-//     auto presentation = device.surfacePresentations(surface);
-//     writeln( "Formats:\n", formats
-//            , "\nCapabilities:\n", capabilities
-//            , "\nPresentation:\n", presentation );
-
-    // auto swapchain  = device.createSwapchain(surface);
-//     auto images     = device.swapchainImages(swapchain);
-//     auto imageViews = images.map!(i => device.createImageView(i)).array;
-    
-//     auto vertModule = device.createShaderModule("./example/shaders/bin/vert.spv");
-//     auto fragModule = device.createShaderModule("./example/shaders/bin/frag.spv");
+//     auto vertModule = targetDevice.createShaderModule("./example/shaders/bin/vert.spv");
+//     auto fragModule = targetDevice.createShaderModule("./example/shaders/bin/frag.spv");
 
 //     VkPipelineShaderStageCreateInfo[2] shaderStages = {
 //         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -101,31 +103,30 @@ void main() {
 //     shaderStages[1].module_ = fragModule;
 
 //     scope(exit) {
-//         vkDestroyShaderModule(device, vertModule, null);
-//         vkDestroyShaderModule(device, fragModule, null);
+//         vkDestroyShaderModule(targetDevice, vertModule, null);
+//         vkDestroyShaderModule(targetDevice, fragModule, null);
 //         foreach(view; imageViews) {
-//             vkDestroyImageView(device, view, null);
+//             vkDestroyImageView(targetDevice, view, null);
 //         }
-//         vkDestroySwapchainKHR(device, swapchain, null);
 //     }
 
 //     //////////////////////////////////////////////////////////////
 
-//     auto layout       = device.createPipelineLayout;
-//     auto renderpass   = device.createRenderPass(layout);
-//     auto pipeline     = device.createPipeline(layout,renderpass,shaderStages);
+//     auto layout       = targetDevice.createPipelineLayout;
+//     auto renderpass   = targetDevice.createRenderPass(layout);
+//     auto pipeline     = targetDevice.createPipeline(layout,renderpass,shaderStages);
 //     auto framebuffers = imageViews
-//         .map!( v => device.createFramebuffer(renderpass, v)).array;
-//     auto commandPool  = device.createCommandPool;
-//     auto commandBuffs = device.createCommandBuffer(commandPool, framebuffers.length);
+//         .map!( v => targetDevice.createFramebuffer(renderpass, v)).array;
+//     auto commandPool  = targetDevice.createCommandPool;
+//     auto commandBuffs = targetDevice.createCommandBuffer(commandPool, framebuffers.length);
 //     scope(exit) {
-//         vkDestroyCommandPool(device, commandPool, null);
+//         vkDestroyCommandPool(targetDevice, commandPool, null);
 //         foreach(buff; framebuffers) {
-//             vkDestroyFramebuffer(device, buff, null);
+//             vkDestroyFramebuffer(targetDevice, buff, null);
 //         }
-//         vkDestroyPipeline(device, pipeline, null);
-//         vkDestroyRenderPass(device, renderpass, null);
-//         vkDestroyPipelineLayout(device, layout, null);
+//         vkDestroyPipeline(targetDevice, pipeline, null);
+//         vkDestroyRenderPass(targetDevice, renderpass, null);
+//         vkDestroyPipelineLayout(targetDevice, layout, null);
 //     }
 
 //     foreach (i, buffer; commandBuffs) {
@@ -157,18 +158,18 @@ void main() {
 //         }
 //     }
 
-//     auto imageAvailableSemaphore = device.createSemaphores;
-//     auto renderFinishedSemaphore = device.createSemaphores;
+//     auto imageAvailableSemaphore = targetDevice.createSemaphores;
+//     auto renderFinishedSemaphore = targetDevice.createSemaphores;
 //     scope(exit){
-//         vkDestroySemaphore(device, renderFinishedSemaphore, null);
-//         vkDestroySemaphore(device, imageAvailableSemaphore, null);
+//         vkDestroySemaphore(targetDevice, renderFinishedSemaphore, null);
+//         vkDestroySemaphore(targetDevice, imageAvailableSemaphore, null);
 //     }
 
 //     (event){
 //         //{ //draw
 //             uint imageIndex;
 //             VkResult result;
-//             result = vkAcquireNextImageKHR(device, swapchain, ulong.max, imageAvailableSemaphore, null, &imageIndex);
+//             result = vkAcquireNextImageKHR(targetDevice, swapchain, ulong.max, imageAvailableSemaphore, null, &imageIndex);
 //             if(result != VkResult.VK_SUCCESS){
 //                 throw new StringException(imageIndex.to!string ~ result.to!string);
 //             }
