@@ -5,8 +5,10 @@ import std.array
 import sdlloader;
 import vulkanloader;
 import std.string;
-import std.algorithm.iteration;
+import std.algorithm;
 
+enum desiredPresentation        =   VkPresentModeKHR.VK_PRESENT_MODE_MAILBOX_KHR;
+enum fallbackPresentation       =   VkPresentModeKHR.VK_PRESENT_MODE_FIFO_KHR;
 enum desiredDeviceExtentions    =   [ VK_KHR_SWAPCHAIN_EXTENSION_NAME ];
 enum desiredExtentions          =   [ VK_KHR_SURFACE_EXTENSION_NAME
                                     , VK_KHR_WIN32_SURFACE_EXTENSION_NAME ];
@@ -81,11 +83,16 @@ void main() {
     auto graphQueue = device.acquire!vkGetDeviceQueue(queueFamilyIndex, 0);
     scope(exit) vkDestroyDevice(device, null);
 
-    auto format     = targetDevice
+    const auto format       = targetDevice
         .hasSurfaceFormat(surface, desiredFormat)
             ? desiredFormat
             : targetDevice.surfaceFormats(surface).front;
-    auto swapchain  = device.createSwapchain(surface, format);
+    const auto presentation = targetDevice
+        .surfacePresentations(surface)
+        .bind!canFind(desiredPresentation)
+            ? desiredPresentation
+            : fallbackPresentation;
+    auto swapchain = device.createSwapchain(surface, format, presentation);
     scope(exit) vkDestroySwapchainKHR(device, swapchain, null);
 //     auto images     = targetDevice.swapchainImages(swapchain);
 //     auto imageViews = images.map!(i => targetDevice.createImageView(i)).array;

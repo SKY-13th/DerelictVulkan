@@ -101,6 +101,10 @@ auto bind(alias F, T, Args...)(auto ref Maybe!T maybe, Args args) {
         return maybe ? F(maybe.payload, args).just : nothing!Result;
     }
 }
+
+auto fallback(T)(auto ref Maybe!T maybe, auto ref T fBack) {
+    return maybe ? maybe.payload : fBack;
+}
 //////////////////////////////////////////////////////////////
 
 template acquire(alias creator) {

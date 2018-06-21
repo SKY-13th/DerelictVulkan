@@ -127,7 +127,11 @@ auto createSurface(VkInstance instance, SDL2WMInfo info) in {
     return instance.acquire!vkCreateWin32SurfaceKHR(&surfaceCreateInfo, null);
 }
 
-auto createSwapchain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR format) in {
+auto createSwapchain( VkDevice           device
+                    , VkSurfaceKHR       surface
+                    , VkSurfaceFormatKHR format
+                    , VkPresentModeKHR   present ) 
+in {
     assert(device);
     assert(surface);
 } do {
@@ -143,7 +147,7 @@ auto createSwapchain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR f
         imageSharingMode: VkSharingMode.VK_SHARING_MODE_EXCLUSIVE,
         preTransform:     VkSurfaceTransformFlagBitsKHR.VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
         compositeAlpha:   VkCompositeAlphaFlagBitsKHR.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        presentMode:      VkPresentModeKHR.VK_PRESENT_MODE_MAILBOX_KHR,
+        presentMode:      present,
         clipped:      true,
         oldSwapchain: null
     };
