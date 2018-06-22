@@ -92,7 +92,10 @@ void main() {
         .bind!canFind(desiredPresentation)
             ? desiredPresentation
             : fallbackPresentation;
-    auto swapchain = device.createSwapchain(surface, format, presentation);
+    const auto extent = targetDevice.surfaceCapabilities(surface)
+        .demand!"Can't obtain surface capabilities"
+        .maxImageExtent;
+    auto swapchain = device.createSwapchain(surface, format, presentation, extent);
     scope(exit) vkDestroySwapchainKHR(device, swapchain, null);
 //     auto images     = targetDevice.swapchainImages(swapchain);
 //     auto imageViews = images.map!(i => targetDevice.createImageView(i)).array;

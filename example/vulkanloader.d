@@ -130,7 +130,8 @@ auto createSurface(VkInstance instance, SDL2WMInfo info) in {
 auto createSwapchain( VkDevice           device
                     , VkSurfaceKHR       surface
                     , VkSurfaceFormatKHR format
-                    , VkPresentModeKHR   present ) 
+                    , VkPresentModeKHR   present
+                    , VkExtent2D         extent )
 in {
     assert(device);
     assert(surface);
@@ -138,7 +139,7 @@ in {
     VkSwapchainCreateInfoKHR createInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         surface:     surface,
-        imageExtent: VkExtent2D(640, 480),
+        imageExtent: extent,
         minImageCount:    3,
         imageArrayLayers: 1,
         imageFormat:      format.format,
