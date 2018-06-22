@@ -155,14 +155,17 @@ in {
     return device.acquire!vkCreateSwapchainKHR(&createInfo, null);
 }
 
-auto createImageView(VkDevice device, VkImage image) in {
+auto createImageView( VkDevice device
+                    , VkImage image
+                    , VkFormat format )
+in {
     assert(device);
     assert(image);
 } do {
     VkImageViewCreateInfo createInfo = {
         sType:    VkStructureType.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         image:    image,
-        format:   VkFormat.VK_FORMAT_B8G8R8A8_UNORM,
+        format:   format,
         viewType: VkImageViewType.VK_IMAGE_VIEW_TYPE_2D,
         subresourceRange: {
             aspectMask: VkImageAspectFlagBits.VK_IMAGE_ASPECT_COLOR_BIT,
@@ -175,6 +178,7 @@ auto createImageView(VkDevice device, VkImage image) in {
 
 auto createShaderModule(VkDevice device, string path) {
     import std.file : read;
+    scope(failure) return nothing!VkShaderModule;
     const auto data = read(path);
     VkShaderModuleCreateInfo createInfo = {
         sType:    VkStructureType.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -186,7 +190,8 @@ auto createShaderModule(VkDevice device, string path) {
 
 auto createPipeline( VkDevice         device
                    , VkPipelineLayout pipelineLayout 
-                   , VkRenderPass     renderPass 
+                   , VkRenderPass     renderPass
+                   , VkExtent2D       extent
                    , VkPipelineShaderStageCreateInfo[] shaderStages)
 {
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
@@ -198,13 +203,13 @@ auto createPipeline( VkDevice         device
     };
     VkViewport viewport = {
         x:0, y:0,
-        width:  640,
-        height: 480,
+        width:  extent.width,
+        height: extent.height,
         maxDepth: 1,
         minDepth: 0
     };
     VkRect2D scissor = {
-        extent: VkExtent2D(640, 480)
+        extent: extent
     };
 
     VkPipelineViewportStateCreateInfo viewportState = {
@@ -263,12 +268,12 @@ auto createPipelineLayout(VkDevice device){
     return device.acquire!vkCreatePipelineLayout(&pipelineLayoutInfo, null);
 }
 
-auto createRenderPass(VkDevice device, VkPipelineLayout pipeline) in {
+auto createRenderPass(VkDevice device, VkPipelineLayout pipeline, VkFormat format) in {
     assert(device);
     assert(pipeline);
 } do {
     VkAttachmentDescription colorAttachment = {
-        format:  VkFormat.VK_FORMAT_B8G8R8A8_UNORM,
+        format:  format,
         samples: VkSampleCountFlagBits.VK_SAMPLE_COUNT_1_BIT,
         loadOp:  VkAttachmentLoadOp.VK_ATTACHMENT_LOAD_OP_CLEAR,
         storeOp: VkAttachmentStoreOp.VK_ATTACHMENT_STORE_OP_STORE,

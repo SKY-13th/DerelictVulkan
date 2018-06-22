@@ -83,6 +83,9 @@ void main() {
     auto graphQueue = device.acquire!vkGetDeviceQueue(queueFamilyIndex, 0);
     scope(exit) vkDestroyDevice(device, null);
 
+
+    ///////////////////////////////////////////////////////////////
+    // Create Swapchain
     const auto format       = targetDevice
         .hasSurfaceFormat(surface, desiredFormat)
             ? desiredFormat
@@ -95,49 +98,62 @@ void main() {
     const auto extent = targetDevice.surfaceCapabilities(surface)
         .demand!"Can't obtain surface capabilities"
         .maxImageExtent;
-    auto swapchain = device.createSwapchain(surface, format, presentation, extent);
+    auto swapchain  = device.createSwapchain(surface, format, presentation, extent);
     scope(exit) vkDestroySwapchainKHR(device, swapchain, null);
-//     auto images     = targetDevice.swapchainImages(swapchain);
-//     auto imageViews = images.map!(i => targetDevice.createImageView(i)).array;
-    
-//     auto vertModule = targetDevice.createShaderModule("./example/shaders/bin/vert.spv");
-//     auto fragModule = targetDevice.createShaderModule("./example/shaders/bin/frag.spv");
 
-//     VkPipelineShaderStageCreateInfo[2] shaderStages = {
-//         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-//         pName: "main".toStringz
-//     };
-//     shaderStages[0].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT;
-//     shaderStages[1].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT;
-//     shaderStages[0].module_ = vertModule;
-//     shaderStages[1].module_ = fragModule;
 
-//     scope(exit) {
-//         vkDestroyShaderModule(targetDevice, vertModule, null);
-//         vkDestroyShaderModule(targetDevice, fragModule, null);
-//         foreach(view; imageViews) {
-//             vkDestroyImageView(targetDevice, view, null);
-//         }
-//     }
+    ///////////////////////////////////////////////////////////////
+    // Prepair Shader Stages
+    auto vertModule = device
+        .createShaderModule("./example/shaders/bin/vert.spv")
+        .demand!"No vertex shader found";
+    auto fragModule = device
+        .createShaderModule("./example/shaders/bin/frag.spv")
+        .demand!"No fragment shader found";
 
-//     //////////////////////////////////////////////////////////////
+    VkPipelineShaderStageCreateInfo[2] shaderStages = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        pName: "main".toStringz
+    };
+    shaderStages[0].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT;
+    shaderStages[1].stage   = VkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderStages[0].module_ = vertModule;
+    shaderStages[1].module_ = fragModule;
 
-//     auto layout       = targetDevice.createPipelineLayout;
-//     auto renderpass   = targetDevice.createRenderPass(layout);
-//     auto pipeline     = targetDevice.createPipeline(layout,renderpass,shaderStages);
-//     auto framebuffers = imageViews
-//         .map!( v => targetDevice.createFramebuffer(renderpass, v)).array;
-//     auto commandPool  = targetDevice.createCommandPool;
-//     auto commandBuffs = targetDevice.createCommandBuffer(commandPool, framebuffers.length);
-//     scope(exit) {
-//         vkDestroyCommandPool(targetDevice, commandPool, null);
-//         foreach(buff; framebuffers) {
-//             vkDestroyFramebuffer(targetDevice, buff, null);
-//         }
-//         vkDestroyPipeline(targetDevice, pipeline, null);
-//         vkDestroyRenderPass(targetDevice, renderpass, null);
-//         vkDestroyPipelineLayout(targetDevice, layout, null);
-//     }
+
+    //////////////////////////////////////////////////////////////
+    // Setup Pipeline
+    auto layout       = device.createPipelineLayout;
+    auto renderpass   = device.createRenderPass(layout, format.format);
+    auto pipeline     = device.createPipeline(layout, renderpass, extent, shaderStages);
+    vkDestroyShaderModule(device, vertModule, null);
+    vkDestroyShaderModule(device, fragModule, null);
+    scope(exit) {
+        vkDestroyPipeline(device, pipeline, null);
+        vkDestroyRenderPass(device, renderpass, null);
+        vkDestroyPipelineLayout(device, layout, null);
+    }
+
+    ///////////////////////////////////////////////////////////////
+    // Prepair Framebuffers
+    auto images       = device.swapchainImages(swapchain);
+    auto imageViews   = images.map!( i => device
+        .createImageView(i, format.format)
+        .demand!"Can't create Image View" ).array;
+    auto framebuffers = imageViews.map!( v => device
+        .createFramebuffer(renderpass, v)
+        .demand!"Can't create Framebuffer" ).array;
+    scope(exit) {
+        framebuffers.each!(b => vkDestroyFramebuffer(device, b, null));
+        imageViews  .each!(v => vkDestroyImageView(device, v, null));
+    }
+
+
+    //////////////////////////////////////////////////////////////
+    // Setup Command Buffs
+    auto commandPool  = device.createCommandPool(queueFamilyIndex);
+    scope(exit) vkDestroyCommandPool(device, commandPool, null);
+    auto commandBuffs = device.createCommandBuffer(commandPool, framebuffers.length);
 
 //     foreach (i, buffer; commandBuffs) {
 //         VkCommandBufferBeginInfo beginInfo = {
