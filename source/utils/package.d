@@ -89,7 +89,7 @@ auto demand(alias F, string info = "", T)(T a) if(__traits(compiles, F(a))) {
     return a;
 }
 
-auto demand(string info, T)(T a)
+auto demand(string info = "", T)(T a)
     if(is(T:bool) || isMaybe!T) {
     import std.exception;
     debug { assert (a, info); }
@@ -115,7 +115,7 @@ auto expect(alias F, string info = "", T)(T a)
     return a;
 }
 
-auto expect(string info, T)(T a)
+auto expect(string info = "", T)(T a)
     if(is(T:bool) || isMaybe!T) {
     import std.stdio;
     if (!a) {
@@ -145,7 +145,6 @@ template acquire(alias creator) {
                  , "Creator should match patern: `creator(..., Target*)`!" );
     alias Target   = PointerTarget!(Parameters!creator[$-1]);
     enum  isReturn = !is( ReturnType!creator == void );
-    enum  isBool   = is(Target == VkBool32);
 
     auto acquire(Args...)(Args args)
     if(__traits(compiles, creator(args, null)))
@@ -153,15 +152,11 @@ template acquire(alias creator) {
         Target target;
         static if(isReturn) {
             const auto result = creator(args, &target);
-            writeln( "Create `"   , Target.stringof
-                   , "`| result: ", result );
-            static if(isBool) {
-                return result.to!bool && target;
-            } else {
-                return result.to!bool
-                     ? target.just
-                     : nothing!Target;
-            }
+            // writeln( "Create `"   , Target.stringof
+            //        , "`| result: ", result );
+            return result.to!bool
+                 ? target.just
+                 : nothing!Target;
         } else {
             creator(args, &target);
             return target;

@@ -184,49 +184,51 @@ void main() {
             .expect!"Failed to write a command buffer");
     }
 
-//     auto imageAvailableSemaphore = targetDevice.createSemaphores;
-//     auto renderFinishedSemaphore = targetDevice.createSemaphores;
-//     scope(exit){
-//         vkDestroySemaphore(targetDevice, renderFinishedSemaphore, null);
-//         vkDestroySemaphore(targetDevice, imageAvailableSemaphore, null);
-//     }
 
-//     (event){
-//         //{ //draw
-//             uint imageIndex;
-//             VkResult result;
-//             result = vkAcquireNextImageKHR(targetDevice, swapchain, ulong.max, imageAvailableSemaphore, null, &imageIndex);
-//             if(result != VkResult.VK_SUCCESS){
-//                 throw new StringException(imageIndex.to!string ~ result.to!string);
-//             }
-//             VkSemaphore[]          waitSemaphores   = [imageAvailableSemaphore];
-//             VkPipelineStageFlags[] waitStages       = [VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT];
-//             VkSemaphore[]          signalSemaphores = [renderFinishedSemaphore];
-//             VkSubmitInfo submitInfo = {
-//                 sType: VkStructureType.VK_STRUCTURE_TYPE_SUBMIT_INFO,
-//                 waitSemaphoreCount: 1,
-//                 pWaitSemaphores:    waitSemaphores.ptr,
-//                 pWaitDstStageMask:  waitStages.ptr,
-//                 commandBufferCount: 1,
-//                 pCommandBuffers: &commandBuffs[imageIndex],
-//                 signalSemaphoreCount: 1,
-//                 pSignalSemaphores: signalSemaphores.ptr
-//             };
-//             result = vkQueueSubmit(graphQueue, 1, &submitInfo, null);
-//             if(result != VkResult.VK_SUCCESS){
-//                 throw new StringException(result.to!string);
-//             }
+    //////////////////////////////////////////////////////////////
+    // Setup Semaphores
+    auto imageAvailableSemaphore = device.createSemaphore.demand;
+    auto renderFinishedSemaphore = device.createSemaphore.demand;
+    scope(exit) {
+        vkDestroySemaphore(device, renderFinishedSemaphore, null);
+        vkDestroySemaphore(device, imageAvailableSemaphore, null);
+    }
 
-//             VkSwapchainKHR[] swapChains = [swapchain];
-//             VkPresentInfoKHR presentInfo = {
-//                 sType: VkStructureType.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-//                 waitSemaphoreCount: 1,
-//                 pWaitSemaphores: signalSemaphores.ptr,
-//                 swapchainCount: 1,
-//                 pSwapchains: swapChains.ptr,
-//                 pImageIndices: &imageIndex,
-//             };
-//             vkQueuePresentKHR(graphQueue, &presentInfo);
-//         //}
-//     }.eventLoop;
+    //////////////////////////////////////////////////////////////
+    // Draw
+    enum
+    VkPipelineStageFlags[]  waitStages        = [VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT];
+    VkSemaphore[]           waitSemaphores    = [imageAvailableSemaphore];
+    VkSemaphore[]           signalSemaphores  = [renderFinishedSemaphore];
+    VkSwapchainKHR[]        swapChains        = [swapchain];
+    VkSubmitInfo      submitInformation = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        waitSemaphoreCount: 1,
+        pWaitSemaphores:    waitSemaphores.ptr,
+        pWaitDstStageMask:  waitStages.ptr,
+        commandBufferCount: 1,
+        signalSemaphoreCount: 1,
+        pSignalSemaphores: signalSemaphores.ptr
+    };
+    VkPresentInfoKHR presentInformation = {
+        sType: VkStructureType.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        waitSemaphoreCount: 1,
+        pWaitSemaphores: signalSemaphores.ptr,
+        swapchainCount: 1,
+        pSwapchains: swapChains.ptr,
+    };
+
+    (event) { device
+        .acquireNextImage(swapchain, ulong.max, imageAvailableSemaphore, null)
+        .bind!((imageIndex) {
+            VkSubmitInfo submitInfo    = submitInformation;
+            submitInfo.pCommandBuffers = &commandBuffs[imageIndex];
+            return vkQueueSubmit(graphQueue, 1, &submitInfo, null).just
+                .bind!( _ => imageIndex ); })
+        .bind!((imageIndex) {
+            VkPresentInfoKHR presentInfo = presentInformation;
+            presentInfo.pImageIndices    = &imageIndex;
+            return vkQueuePresentKHR(graphQueue, &presentInfo); })
+        .expect!"Can't draw frame";
+    }.eventLoop;
 }

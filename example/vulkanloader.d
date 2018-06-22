@@ -54,8 +54,8 @@ alias hasSurfaceFormat  = (device, surface, desired) =>
 
 
 // Swapchain
-alias swapchainImages   = enumerate!vkGetSwapchainImagesKHR;
-
+alias swapchainImages  = enumerate!vkGetSwapchainImagesKHR;
+alias acquireNextImage = acquire!vkAcquireNextImageKHR;
 // Physical Device
 alias sortByScore           = d => d.sort!((a,b) => a.score < b.score).array;
 alias physicalDevices       = enumerate!vkEnumeratePhysicalDevices;
@@ -347,7 +347,7 @@ auto createCommandBuffer(VkDevice device, VkCommandPool commandPool, ulong size)
     return target;
 }
 
-auto createSemaphores(VkDevice device){
+auto createSemaphore(VkDevice device){
     VkSemaphoreCreateInfo semaphoreInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
     };
