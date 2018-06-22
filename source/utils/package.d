@@ -13,7 +13,7 @@ pure nothrow {
     struct Maybe(T) {
         this(T p) {
             payload = p;
-            static if(!isRange && !isPtr) {
+            static if(!isOdd) {
                 _value = true;
             }
         }
@@ -24,25 +24,30 @@ pure nothrow {
         }
 
         private {
-            enum bool isRange = isInputRange!(Unqual!T);
-            enum bool isPtr   = isPointer!(Unqual!T);
+            enum bool isRange    = isInputRange!(Unqual!T);
+            enum bool isPtr      = isPointer!(Unqual!T);
+            enum bool isVkResult = is(T : VkResult);
+            enum bool isOdd      = isRange || isPtr || isVkResult;
         }
 
         static if (isRange) {
             private enum bool isConstAble = __traits(compiles, ConstOf!T.init.empty);
             static if(isConstAble) {
-                private bool _just() inout { return !payload.empty; }
+                bool opCast(A : bool)() inout { return !payload.empty; }
             } else {
-                private bool _just() { return !payload.empty; }
+                bool opCast(A : bool)() { return !payload.empty; }
             }
-        } else static if(isPtr) {
-            private bool _just() inout { return cast(bool)payload; }
-        } else {
-            private bool _just() inout { return _value; }
+        } 
+        static if (isPtr) {
+            bool opCast(A : bool)() inout { return cast(bool)payload; }
+        }
+        static if (isVkResult) {
+            bool opCast(A : bool)() inout { return payload == VkResult.VK_SUCCESS; }
+        }
+        static if (!isOdd) {
+            bool opCast(A : bool)() inout { return _value; }
             private bool _value = false;
         }
-
-        alias opCast(A : bool) =  _just;
     }
 
     auto just(T)(T t) {
@@ -61,9 +66,8 @@ pure nothrow {
         enum isMaybe = true;
     }
 
-    template nothing(alias example) {
-        alias Type   = Select!(isType!example, example, typeof(example));
-        enum nothing = nothing!Type;
+    template nothing(alias example) if(!isType!example){
+        enum nothing = nothing!(typeof(example));
     }
 
     template nothing(Type) {
@@ -90,6 +94,33 @@ auto demand(string info, T)(T a)
     import std.exception;
     debug { assert (a, info); }
     else  { enforce(a, info); }
+    return a;
+}
+
+auto expect(alias F, string info = "", A: Maybe!T, T)(A a) 
+    if(__traits(compiles, F(a))) {
+    import std.stdio;
+    if (!(a && F(a))) {
+        stderr.writeln(info);
+    }
+    return a;
+}
+
+auto expect(alias F, string info = "", T)(T a) 
+    if(__traits(compiles, F(a))) {
+    import std.stdio;
+    if (!F(a)) {
+        stderr.writeln(info);
+    }
+    return a;
+}
+
+auto expect(string info, T)(T a)
+    if(is(T:bool) || isMaybe!T) {
+    import std.stdio;
+    if (!a) {
+        stderr.writeln(info);
+    }
     return a;
 }
 

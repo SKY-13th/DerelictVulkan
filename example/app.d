@@ -22,7 +22,7 @@ enum desiredFormat  = VkSurfaceFormatKHR(
     VkFormat.VK_FORMAT_B8G8R8A8_UNORM, 
     VkColorSpaceKHR.VK_COLORSPACE_SRGB_NONLINEAR_KHR);
 
-
+immutable VkClearValue clearColor = { color: { float32: [0.0f, 0.0f, 0.0f, 1.0f] } };
 void main() {
     ///////////////////////////////////////////////////////////////
     // Init SDL
@@ -150,39 +150,39 @@ void main() {
 
 
     //////////////////////////////////////////////////////////////
-    // Setup Command Buffs
+    // Setup Command Buffers
     auto commandPool  = device.createCommandPool(queueFamilyIndex);
     scope(exit) vkDestroyCommandPool(device, commandPool, null);
     auto commandBuffs = device.createCommandBuffer(commandPool, framebuffers.length);
 
-//     foreach (i, buffer; commandBuffs) {
-//         VkCommandBufferBeginInfo beginInfo = {
-//             sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-//             flags: VkCommandBufferUsageFlagBits.VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT
-//         };
+    {
+        enum context   = VkSubpassContents.VK_SUBPASS_CONTENTS_INLINE;
+        enum bindPoint = VkPipelineBindPoint.VK_PIPELINE_BIND_POINT_GRAPHICS;
+        const VkCommandBufferBeginInfo beginInfo = {
+            sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            flags: VkCommandBufferUsageFlagBits.VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT
+        };
+        VkRenderPassBeginInfo renderPassInfo = {
+            sType: VkStructureType.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            renderPass:  renderpass,
+            renderArea:{{0, 0},extent},
+            clearValueCount: 1,
+            pClearValues: &clearColor
+        };
 
-//         if (vkBeginCommandBuffer(buffer, &beginInfo) != VkResult.VK_SUCCESS) {
-//             writeln("ERROR! Start");
-//         }
-
-//         VkClearValue clearColor;
-//         clearColor.color.float32 = [0.0f, 0.0f, 0.0f, 1.0f];
-//         VkRenderPassBeginInfo renderPassInfo = {
-//             sType: VkStructureType.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-//             renderPass:  renderpass,
-//             framebuffer: framebuffers[i],
-//             renderArea:{{0, 0},VkExtent2D(640, 480)},
-//             clearValueCount: 1,
-//             pClearValues: &clearColor
-//         };
-//         vkCmdBeginRenderPass(buffer, &renderPassInfo, VkSubpassContents.VK_SUBPASS_CONTENTS_INLINE);
-//         vkCmdBindPipeline(buffer, VkPipelineBindPoint.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-//         vkCmdDraw(buffer, 3, 1, 0, 0);
-//         vkCmdEndRenderPass(buffer);
-//         if (vkEndCommandBuffer(buffer) != VkResult.VK_SUCCESS) {
-//             writeln("ERROR! end");
-//         }
-//     }
+        commandBuffs.each!((i, buffer) =>
+            vkBeginCommandBuffer(buffer, &beginInfo).just
+            .bind!((_) {
+                VkRenderPassBeginInfo info = renderPassInfo;
+                info.framebuffer           = framebuffers[i];
+                vkCmdBeginRenderPass(buffer, &info, context);
+                vkCmdBindPipeline(buffer, bindPoint, pipeline);
+                vkCmdDraw(buffer, 3, 1, 0, 0);
+                vkCmdEndRenderPass(buffer);
+                return _; })
+            .bind!(_ => vkEndCommandBuffer(buffer))
+            .expect!"Failed to write a command buffer");
+    }
 
 //     auto imageAvailableSemaphore = targetDevice.createSemaphores;
 //     auto renderFinishedSemaphore = targetDevice.createSemaphores;
