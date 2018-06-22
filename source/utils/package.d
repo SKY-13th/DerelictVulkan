@@ -138,6 +138,11 @@ auto fallback(T)(auto ref Maybe!T maybe, auto ref T fBack) {
 }
 //////////////////////////////////////////////////////////////
 
+template ResultStatusStorage(alias func) {
+    alias Type = Unqual!(ReturnType!func);
+    static Type value = Type.init;
+}
+
 template acquire(alias creator) {
     import std.stdio;
     static assert( isCallable!creator, "Creator is not callable!" );
@@ -151,9 +156,8 @@ template acquire(alias creator) {
     {
         Target target;
         static if(isReturn) {
-            const auto result = creator(args, &target);
-            // writeln( "Create `"   , Target.stringof
-            //        , "`| result: ", result );
+            auto result = creator(args, &target);
+            ResultStatusStorage!creator.value = result;
             return result.to!bool
                  ? target.just
                  : nothing!Target;
@@ -167,9 +171,7 @@ template acquire(alias creator) {
         enum isVkResult = is(A : VkResult);
         static if( isVkResult ) {
             return VkResult.VK_SUCCESS == a;
-        } else static if( isPointer!A ) {
-            return cast(bool) a;
-        } else return true;
+        } else return a;
     }
 }
 
