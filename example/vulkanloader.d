@@ -36,11 +36,12 @@ alias isSurfaceSupported    = (device, surface, queueFlag) =>
                 && device.surfaceSupport(index, surface);
         });
 
-alias hasSurfaceFormat  = (device, surface, desired) =>
-        device.surfaceFormats(surface)
-            .bind!( formats => ( formats.length == 1
-                 && formats.front.format == VkFormat.VK_FORMAT_UNDEFINED )
-                 || formats.any!(a => a == desired) );
+alias hasNoPreferedFormat = formats => formats.length == 1
+    && formats.front.format == VkFormat.VK_FORMAT_UNDEFINED;
+
+alias hasSurfaceFormatSupport = (formats, desiredFormat) =>
+    formats.hasNoPreferedFormat || formats.canFind(desiredFormat)
+    ? desiredFormat : formats.front;
 
 alias sortByScore           = d => d.sort!((a,b) => a.score < b.score).array;
 alias score                 = (VkPhysicalDevice device) =>

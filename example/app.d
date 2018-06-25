@@ -1,7 +1,7 @@
 import derelict.vulkan;
 import std.stdio;
 import std.array
-, std.conv;
+     , std.conv;
 import sdlloader;
 import vulkanloader;
 import std.string;
@@ -86,15 +86,14 @@ void main() {
 
     ///////////////////////////////////////////////////////////////
     // Create Swapchain
-    const auto format       = targetDevice
-        .hasSurfaceFormat(surface, desiredFormat)
-            ? desiredFormat
-            : targetDevice.surfaceFormats(surface).front;
+    const auto format = targetDevice.surfaceFormats(surface)
+        .bind!hasSurfaceFormatSupport(desiredFormat)
+        .demand!"Can't obtain surface formats";
     const auto presentation = targetDevice
         .surfacePresentations(surface)
-        .bind!canFind(desiredPresentation)
-            ? desiredPresentation
-            : fallbackPresentation;
+        .bind!find(desiredPresentation)
+        .bind!front
+        .fallback(fallbackPresentation);
     const auto extent = targetDevice.surfaceCapabilities(surface)
         .demand!"Can't obtain surface capabilities"
         .maxImageExtent;
