@@ -11,14 +11,16 @@ import derelict.vulkan;
 pure nothrow {
 
     struct Maybe(T) {
+        alias   Payload = T;
+        alias   payload this;
+        Payload payload;
+
         this(T p) {
             payload = p;
             static if(!isOdd) {
                 _value = true;
             }
         }
-        alias payload this;
-        T     payload;
         ref A opCast(A : T)() inout {
             return payload;
         }

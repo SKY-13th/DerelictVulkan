@@ -12,40 +12,44 @@ public import utils.functional;
 
 //////////////////////////////////////////////////////////////
 
-template ResultStatusStorage(alias func) {
-    alias Type = Unqual!(ReturnType!func);
-    static Type value = Type.init;
-}
+static VkResult vulkanResult;
 
 template acquire(alias creator) {
-    import std.stdio;
     static assert( isCallable!creator, "Creator is not callable!" );
     static assert( Parameters!creator.length >= 1
                  , "Creator should match patern: `creator(..., Target*)`!" );
     alias Target   = PointerTarget!(Parameters!creator[$-1]);
-    enum  isReturn = !is( ReturnType!creator == void );
 
     auto acquire(Args...)(Args args)
-    if(__traits(compiles, creator(args, null)))
-    {
-        Target target;
-        static if(isReturn) {
-            auto result = creator(args, &target);
-            ResultStatusStorage!creator.value = result;
-            return result.to!bool
-                 ? target.just
-                 : nothing!Target;
-        } else {
-            creator(args, &target);
-            return target;
-        }
+    if(__traits(compiles, creator(args, null))) {
+        Target target = void;
+        return target.request!creator(args);
     }
+}
 
-    T to(T: bool, A)(A a) pure nothrow {
-        enum isVkResult = is(A : VkResult);
-        static if( isVkResult ) {
-            return VkResult.VK_SUCCESS == a;
-        } else return a;
+template request(alias creator) {
+    auto request(T, Args...)(ref T target, Args args)
+    if(__traits(compiles, creator(args, null))) {
+        alias getPtr = Select!( isArray!T, t => t.ptr, (ref t) => &t );
+        commit!creator(args, getPtr(target));
+        return vulkanResult.isValid
+             ? target.just
+             : nothing!T;
+    }
+}
+
+bool isValid(VkResult value) {
+    return value >= 0;
+}
+
+private auto commit(alias func, Args...)(Args args) {
+    alias ReturnT  = typeof(func(args));
+    enum  isReturn = is( ReturnT == VkResult );
+    static if(isReturn) {
+        vulkanResult = func(args);
+    } else {
+        vulkanResult = VkResult.VK_SUCCESS;
+        func(args);
     }
 }
 
@@ -55,14 +59,18 @@ template enumerate(alias enumerator) {
                  , "Enumerator should match patern: `enumarator(..., uint* count, Enumerable*)`!");
     alias Enumerable = PointerTarget!(Parameters!enumerator[$-1]);
     alias Target     = Enumerable[];
+
     auto enumerate(Args...)(Args args)
-    if(__traits(compiles, enumerator(args, null, null)))
-    {
+    if(__traits(compiles, enumerator(args, null, null))) {
         uint count;
-        enumerator( args, &count, null );
-        if(!count) return nothing!Target;
+        commit!enumerator( args, &count, null );
+        if(!vulkanResult.isValid || count == 0) {
+            return nothing!Target;
+        }
         auto list = new Enumerable[count];
-        enumerator( args, &count, list.ptr );
-        return list.just;
+        commit!enumerator( args, &count, list.ptr );
+        return vulkanResult.isValid
+             ? list.just
+             : nothing!Target;
     }
 }

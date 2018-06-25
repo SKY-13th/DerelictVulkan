@@ -335,16 +335,17 @@ auto createCommandPool(VkDevice device, uint queueFamilyIndex){
     return device.acquire!vkCreateCommandPool(&poolInfo, null);
 }
 
-auto createCommandBuffer(VkDevice device, VkCommandPool commandPool, ulong size) {
+auto createCommandBuffer(VkDevice device, VkCommandPool commandPool, ulong count) {
+    assert(count <= uint.max);
     VkCommandBufferAllocateInfo allocInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         commandPool: commandPool,
         level: VkCommandBufferLevel.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        commandBufferCount: size.to!uint,
+        commandBufferCount: count.to!uint,
     };
-    VkCommandBuffer[] target = new VkCommandBuffer[size];
-    vkAllocateCommandBuffers(device, &allocInfo, target.ptr);
-    return target;
+    VkCommandBuffer[] target = new VkCommandBuffer[count];
+    return target.request!vkAllocateCommandBuffers(device, &allocInfo);
+
 }
 
 auto createSemaphore(VkDevice device){
