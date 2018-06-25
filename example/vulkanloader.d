@@ -26,15 +26,6 @@ VkApplicationInfo defaultAppInfo = {
     pEngineName:      defaultAppName.ptr,
 };
 
-// Instance
-alias availableExtentions   = enumerate!vkEnumerateInstanceExtensionProperties;
-alias availableLayers       = enumerate!vkEnumerateInstanceLayerProperties;
-
-// Surface
-alias surfaceFormats        = enumerate!vkGetPhysicalDeviceSurfaceFormatsKHR;
-alias surfaceCapabilities   = acquire!vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
-alias surfacePresentations  = enumerate!vkGetPhysicalDeviceSurfacePresentModesKHR;
-alias surfaceSupport        = acquire!vkGetPhysicalDeviceSurfaceSupportKHR;
 alias isSurfaceSupported    = (device, surface, queueFlag) =>
     device.surfaceFormats(surface)
         .bind!( _ => device.surfacePresentations(surface) )
@@ -51,17 +42,7 @@ alias hasSurfaceFormat  = (device, surface, desired) =>
                  && formats.front.format == VkFormat.VK_FORMAT_UNDEFINED )
                  || formats.any!(a => a == desired) );
 
-
-// Swapchain
-alias swapchainImages  = enumerate!vkGetSwapchainImagesKHR;
-alias acquireNextImage = acquire!vkAcquireNextImageKHR;
-// Physical Device
 alias sortByScore           = d => d.sort!((a,b) => a.score < b.score).array;
-alias physicalDevices       = enumerate!vkEnumeratePhysicalDevices;
-alias features              = acquire!vkGetPhysicalDeviceFeatures;
-alias properties            = acquire!vkGetPhysicalDeviceProperties;
-alias queueFamilyProperties = enumerate!vkGetPhysicalDeviceQueueFamilyProperties;
-alias availableExtentions   = enumerate!vkEnumerateDeviceExtensionProperties;
 alias score                 = (VkPhysicalDevice device) =>
     device.queueFamilyProperties
         .bind!( q => q.queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT) )

@@ -8,6 +8,7 @@ import std.range
      , std.array;
 import derelict.vulkan;
 public import vulkan.utils.functional;
+public import vulkan.utils.aliases;
 
 static VkResult vulkanResult;
 
