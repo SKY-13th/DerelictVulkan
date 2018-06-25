@@ -1,4 +1,4 @@
-module utils.functional;
+module vulkan.utils.functional;
 
 import std.range
      , std.algorithm.iteration
@@ -39,7 +39,7 @@ pure nothrow {
             } else {
                 bool opCast(A : bool)() { return !payload.empty; }
             }
-        } 
+        }
         static if (isPtr) {
             bool opCast(A : bool)() inout { return cast(bool)payload; }
         }

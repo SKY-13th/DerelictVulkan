@@ -1,5 +1,5 @@
 module vulkanloader;
-public import utils;
+public import vulkan.utils;
 public import derelict.vulkan;
 
 import std.algorithm.iteration
@@ -12,7 +12,6 @@ import std.algorithm.iteration
      , std.array
      , std.meta;
 import sdlloader;
-import utils;
 
 static this() {
     DerelictVulkan.load();
@@ -320,8 +319,8 @@ auto createFramebuffer( VkDevice     device
         renderPass: renderPass,
         attachmentCount: 1,
         pAttachments:    &view,
-        width:  defaultWindowSize.x,
-        height: defaultWindowSize.y,
+        width:  defaultWindowSize[0],
+        height: defaultWindowSize[1],
         layers: 1
     };
     return device.acquire!vkCreateFramebuffer(&framebufferInfo, null);

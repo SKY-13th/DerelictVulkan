@@ -3,7 +3,6 @@ public import derelict.sdl2.sdl;
 import std.string;
 import std.stdio;
 import std.conv;
-import gl3n.linalg;
 
 struct SDL2Window {
     alias window this;
@@ -20,17 +19,17 @@ struct SDL2WMInfo {
     bool          isValid = false;
 }
 
-enum defaultWindowSize = vec2i(640, 480);
+enum uint[] defaultWindowSize = [640, 480];
 
 auto createWindow( in string        appName
                   , SDL_WindowFlags flags = SDL_WINDOW_SHOWN
-                  , vec2i           size  = defaultWindowSize )
+                  , uint[]          size  = defaultWindowSize )
 {
     SDL2Window output = {
         window: SDL_CreateWindow( 
             appName.toStringz, 0, 0,
-            size.x.to!uint, 
-            size.y.to!uint, 
+            size[0],
+            size[1],
             flags )
     };
     return output;

@@ -1,25 +1,34 @@
 {
-	"name": "derelict-vulkan",
-	"license": "BSL-1.0",
-	"description": "A dynamic binding to the vulkan api.",
-	"copyright": "Copyright © 2016, Felix Hufnagel",
-	"authors": ["Felix Hufnagel"],
-	"targetPath": "bin",
-	"targetType": "library",
-	"dependencies": {
-		"derelict-util" : "~>3.0.0-beta.1"
-	},
-	"subPackages": [
-		{
-			"name"        : "example",
-			"targetType"  : "executable",
-			"sourcePaths" : ["./example"],
-			"targetPath"  : "bin",
-			"dependencies": {
-				"derelict-vulkan": "*",
-				"derelict-sdl2": "~>3.1.0-alpha.4",
-				"gl3n": "~>1.3.1"
-			}
-		}
-	]
+    "name": "derelict-vulkan",
+    "license": "BSL-1.0",
+    "description": "A dynamic binding to the vulkan api.",
+    "copyright": "Copyright © 2016, Felix Hufnagel",
+    "authors": ["Felix Hufnagel"],
+    "targetPath": "bin",
+    "targetType": "library",
+    "dependencies": {
+        "derelict-util" : ">=3.0.0-beta.1"
+    },
+    "subPackages": [
+        {
+            "name"        : "example",
+            "targetType"  : "executable",
+            "sourcePaths" : ["./example"],
+            "targetPath"  : "bin",
+            "dependencies": {
+                "derelict-vulkan": "*",
+                "derelict-vulkan:utils": "*",
+                "derelict-sdl2": "~>3.1.0-alpha.4"
+            }
+        },
+        {
+            "name"        : "utils",
+            "targetType"  : "library",
+            "sourcePaths" : ["./source/vulkan"],
+            "targetPath"  : "bin",
+            "dependencies": {
+                "derelict-vulkan": "*"
+            }
+        }
+    ]
 }

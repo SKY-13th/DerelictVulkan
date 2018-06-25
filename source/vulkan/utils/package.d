@@ -1,4 +1,4 @@
-module utils;
+module vulkan.utils;
 import std.range
      , std.algorithm.iteration
      , std.functional
@@ -7,10 +7,7 @@ import std.range
      , std.string
      , std.array;
 import derelict.vulkan;
-public import utils.functional;
-
-
-//////////////////////////////////////////////////////////////
+public import vulkan.utils.functional;
 
 static VkResult vulkanResult;
 
