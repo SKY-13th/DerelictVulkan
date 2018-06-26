@@ -11,20 +11,12 @@ import std.algorithm.iteration
      , std.stdio
      , std.array
      , std.meta;
+import data;
 import sdlloader;
 
 static this() {
     DerelictVulkan.load();
 }
-
-enum defaultAppName = "Hello Vulkan!";
-immutable
-VkApplicationInfo defaultAppInfo = {
-    sType: VkStructureType.VK_STRUCTURE_TYPE_APPLICATION_INFO,
-    apiVersion:       VK_API_VERSION,
-    pApplicationName: defaultAppName.ptr,
-    pEngineName:      defaultAppName.ptr,
-};
 
 alias isSurfaceSupported    = (device, surface, queueFlag) =>
     device.surfaceFormats(surface)

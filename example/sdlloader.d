@@ -3,6 +3,7 @@ public import derelict.sdl2.sdl;
 import std.string;
 import std.stdio;
 import std.conv;
+import data;
 
 struct SDL2Window {
     alias window this;
@@ -19,11 +20,9 @@ struct SDL2WMInfo {
     bool          isValid = false;
 }
 
-enum uint[] defaultWindowSize = [640, 480];
-
 auto createWindow( in string        appName
                   , SDL_WindowFlags flags = SDL_WINDOW_SHOWN
-                  , uint[]          size  = defaultWindowSize )
+                  , uint[2]         size  = defaultWindowSize )
 {
     SDL2Window output = {
         window: SDL_CreateWindow( 

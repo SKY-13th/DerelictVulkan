@@ -9,48 +9,39 @@ import std.range
 import derelict.vulkan;
 
 pure nothrow {
-
-    struct Maybe(T) {
+    private mixin template MaybeBase(T) {
         alias   Payload = T;
         alias   payload this;
         Payload payload;
+    }
 
-        this(T p) {
-            payload = p;
-            static if(!isOdd) {
-                _value = true;
+    struct Maybe(T) {
+        mixin MaybeBase!T;
+
+        static if(!isRange) {
+            bool opCast(A : bool)() inout { return _value; }
+            private this(T p) {
+                payload = p;
+                _value  = true;
             }
-        }
-        ref A opCast(A : T)() inout {
-            return payload;
-        }
-
-        private {
-            enum bool isRange    = isInputRange!(Unqual!T);
-            enum bool isPtr      = isPointer!(Unqual!T);
-            enum bool isVkResult = is(T : VkResult);
-            enum bool isOdd      = isRange || isPtr || isVkResult;
-        }
-
-        static if (isRange) {
-            private enum bool isConstAble = __traits(compiles, ConstOf!T.init.empty);
-            static if(isConstAble) {
+            private bool _value = false;
+        } else {
+            static if(isConstAble) { // Hack for FilterResult
                 bool opCast(A : bool)() inout { return !payload.empty; }
             } else {
                 bool opCast(A : bool)() { return !payload.empty; }
             }
         }
-        static if (isPtr) {
-            bool opCast(A : bool)() inout { return cast(bool)payload; }
-        }
-        static if (isVkResult) {
-            bool opCast(A : bool)() inout { return payload == VkResult.VK_SUCCESS; }
-        }
-        static if (!isOdd) {
-            bool opCast(A : bool)() inout { return _value; }
-            private bool _value = false;
+
+        private {
+            enum isRange     = isInputRange!(Unqual!T);
+            enum isConstAble = isRange && __traits(compiles, ConstOf!T.init.empty);
         }
     }
+
+    struct Maybe(T : bool)  { mixin MaybeBase!T; }
+    struct Maybe(P : T*, T) { mixin MaybeBase!P; }
+
 
     auto  just(T)(T t) { return Maybe!T(t); }
     alias just(M: Maybe!T, T) = m => m;
@@ -113,11 +104,7 @@ if(is(T:bool) || isMaybe!T) {
 
 auto bind(alias F, T, Args...)(auto ref Maybe!T maybe, Args args) {
     alias Result = typeof(F(maybe.payload, args));
-    static if( is(Result == bool) ) {
-        return maybe ? F(maybe.payload, args) : false;
-    } else {
-        return maybe ? F(maybe.payload, args).just : nothing!Result;
-    }
+    return maybe ? F(maybe.payload, args).just : nothing!Result;
 }
 
 auto fallback(T)(auto ref Maybe!T maybe, auto ref T fBack) {
