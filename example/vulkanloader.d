@@ -29,7 +29,7 @@ alias score       = (VkPhysicalDevice device) =>
                     + ( isDiscreteGPU ? 1000 : 0 );
         });
 
-auto initVulkan( in ref VkApplicationInfo appInfo
+auto initVulkan( in VkApplicationInfo appInfo
                , in string[] extentionsList = []
                , in string[] layersList     = [] )
 {
@@ -137,13 +137,11 @@ auto createPipeline( VkDevice         device
                    , VkExtent2D       extent
                    , VkPipelineShaderStageCreateInfo[] shaderStages)
 {
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
-        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-    };
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
-        sType:    VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        topology: VkPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
-    };
+    auto vertexInputInfo = Default.vertexInputInfo;
+    auto inputAssembly   = Default.inputAssembly;
+    auto rasterizer      = Default.rasterizer;
+    auto multisampling   = Default.multisampling;
+    
     VkViewport viewport = {
         x:0, y:0,
         width:  extent.width,
@@ -154,7 +152,6 @@ auto createPipeline( VkDevice         device
     VkRect2D scissor = {
         extent: extent
     };
-
     VkPipelineViewportStateCreateInfo viewportState = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         viewportCount: 1,
@@ -163,24 +160,9 @@ auto createPipeline( VkDevice         device
         pScissors:     &scissor
     };
 
-    VkPipelineRasterizationStateCreateInfo rasterizer  = {
-        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        polygonMode: VkPolygonMode.VK_POLYGON_MODE_FILL,
-        lineWidth: 1.0f,
-        cullMode: VkCullModeFlagBits.VK_CULL_MODE_NONE,
-        frontFace: VkFrontFace.VK_FRONT_FACE_CLOCKWISE,
-        depthBiasClamp: .0f
-    };
-
-    VkPipelineMultisampleStateCreateInfo multisampling = {
-        sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        rasterizationSamples: VkSampleCountFlagBits.VK_SAMPLE_COUNT_1_BIT,
-    };
-
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {
         colorWriteMask: 0xf,
     };
-
     VkPipelineColorBlendStateCreateInfo colorBlending = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         attachmentCount: 1,
@@ -207,21 +189,14 @@ auto createPipelineLayout(VkDevice device) {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
     };
-
     return device.acquire!vkCreatePipelineLayout(&pipelineLayoutInfo, null);
 }
 
 auto createRenderPass(VkDevice device, VkPipelineLayout pipeline, VkFormat format) {
-    VkAttachmentDescription colorAttachment = {
-        format:  format,
-        samples: VkSampleCountFlagBits.VK_SAMPLE_COUNT_1_BIT,
-        loadOp:  VkAttachmentLoadOp.VK_ATTACHMENT_LOAD_OP_CLEAR,
-        storeOp: VkAttachmentStoreOp.VK_ATTACHMENT_STORE_OP_STORE,
-        stencilLoadOp:  VkAttachmentLoadOp.VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        stencilStoreOp: VkAttachmentStoreOp.VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        initialLayout:  VkImageLayout.VK_IMAGE_LAYOUT_UNDEFINED,
-        finalLayout:    VkImageLayout.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    };
+    auto colorAttachment   = Default.colorAttachment;
+    colorAttachment.format = format;
+    auto dependency        = Default.dependency;
+
     VkAttachmentReference colorAttachmentRef = {
         layout: VkImageLayout.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     };
@@ -230,15 +205,7 @@ auto createRenderPass(VkDevice device, VkPipelineLayout pipeline, VkFormat forma
         colorAttachmentCount: 1,
         pColorAttachments: &colorAttachmentRef
     };
-    VkSubpassDependency dependency = {
-        srcSubpass: VK_SUBPASS_EXTERNAL,
-        dstSubpass: 0,
-        dstStageMask:  VkPipelineStageFlagBits.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        srcStageMask:  VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        srcAccessMask: VkAccessFlagBits.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT 
-                     | VkAccessFlagBits.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
 
-    };
     VkRenderPassCreateInfo renderPassInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         attachmentCount: 1,
@@ -260,8 +227,8 @@ auto createFramebuffer( VkDevice     device
         renderPass: renderPass,
         attachmentCount: 1,
         pAttachments:    &view,
-        width:  defaultWindowSize[0],
-        height: defaultWindowSize[1],
+        width:  Default.windowSize[0],
+        height: Default.windowSize[1],
         layers: 1
     };
     return device.acquire!vkCreateFramebuffer(&framebufferInfo, null);

@@ -11,7 +11,7 @@ import data;
 void main() {
     ///////////////////////////////////////////////////////////////
     // Init SDL
-    auto sdlWindow   = defaultAppName.createWindow;
+    auto sdlWindow   = createWindow(Default.appName);
     auto sdlRenderer = sdlWindow.createRenderer;
     auto sdlInfo     = sdlWindow.info;
     scope(exit) {
@@ -31,13 +31,13 @@ void main() {
     writeln("Available extentions:\n", availableExtentionsList, '\n');
     writeln();
 
-    const auto extentions = desiredExtentions.intersect(availableExtentionsList);
-    const auto layers     = desiredLayers.intersect(availableLayersList);
+    const auto extentions = Default.extentions.intersect(availableExtentionsList);
+    const auto layers     = Default.layers.intersect(availableLayersList);
 
 
     ///////////////////////////////////////////////////////////////
     // Create Vulkan instance and pick Device
-    auto vulkan  = defaultAppInfo.initVulkan(extentions,layers);
+    auto vulkan  = initVulkan(Default.appInfo, extentions,layers);
     scope(exit) vkDestroyInstance(vulkan, null);
     auto surface = vulkan.createSurface(sdlInfo);
     
@@ -45,17 +45,17 @@ void main() {
         .bind!physicalDevices
         .bind!sortByScore
         .bind!(filter!(d => d.score > 0))
-        .bind!(filter!(d => d.isSurfaceSupported(surface, queueFlag)))
+        .bind!(filter!(d => d.isSurfaceSupported(surface, Default.queueFlag)))
         .demand!"No suitable device found"
         .front;
 
     const auto queueFamilyIndex = targetDevice
         .queueFamilyProperties
-        .queueFamilyIndex(queueFlag);
+        .queueFamilyIndex(Default.queueFlag);
     
     const auto availableDeviceExtentions = targetDevice.availableExtentions(null)
         .map!(e => e.extensionName).toStrArray;
-    const auto deviceExtentions = desiredDeviceExtentions
+    const auto deviceExtentions = Default.deviceExtentions
         .intersect(availableDeviceExtentions)
         .demand!(e => e.length > 0, "No swapchain extension available");
 
@@ -73,13 +73,13 @@ void main() {
     ///////////////////////////////////////////////////////////////
     // Create Swapchain
     const auto format = targetDevice.surfaceFormats(surface)
-        .bind!hasSurfaceFormatSupport(desiredFormat)
+        .bind!hasSurfaceFormatSupport(Default.format)
         .demand!"Can't obtain surface formats";
     const auto presentation = targetDevice
         .surfacePresentations(surface)
-        .bind!find(desiredPresentation)
+        .bind!find(Default.presentation)
         .bind!front
-        .fallback(fallbackPresentation);
+        .fallback(Default.fallbackPresentation);
     const auto extent = targetDevice.surfaceCapabilities(surface)
         .demand!"Can't obtain surface capabilities"
         .maxImageExtent;
@@ -90,10 +90,10 @@ void main() {
     ///////////////////////////////////////////////////////////////
     // Prepair Shader Stages
     auto vertModule = device
-        .createShaderModule("./example/shaders/bin/vert.spv")
+        .createShaderModule("./example/shaders/vert.spv")
         .demand!"No vertex shader found";
     auto fragModule = device
-        .createShaderModule("./example/shaders/bin/frag.spv")
+        .createShaderModule("./example/shaders/frag.spv")
         .demand!"No fragment shader found";
 
     VkPipelineShaderStageCreateInfo[2] shaderStages = {
@@ -108,9 +108,9 @@ void main() {
 
     //////////////////////////////////////////////////////////////
     // Setup Pipeline
-    auto layout       = device.createPipelineLayout;
-    auto renderpass   = device.createRenderPass(layout, format.format);
-    auto pipeline     = device.createPipeline(layout, renderpass, extent, shaderStages);
+    auto layout     = device.createPipelineLayout;
+    auto renderpass = device.createRenderPass(layout, format.format);
+    auto pipeline   = device.createPipeline(layout, renderpass, extent, shaderStages);
     vkDestroyShaderModule(device, vertModule, null);
     vkDestroyShaderModule(device, fragModule, null);
     scope(exit) {
@@ -152,7 +152,7 @@ void main() {
             renderPass:  renderpass,
             renderArea:{{0, 0},extent},
             clearValueCount: 1,
-            pClearValues: &clearColor
+            pClearValues: &Default.clearColor
         };
 
         commandBuffs.each!((i, buffer) =>
@@ -181,14 +181,14 @@ void main() {
 
     //////////////////////////////////////////////////////////////
     // Draw
-    VkSemaphore[]    waitSemaphores   = [imageAvailableSemaphore];
-    VkSemaphore[]    signalSemaphores = [renderFinishedSemaphore];
-    VkSwapchainKHR[] swapChains       = [swapchain];
+    VkSemaphore[]     waitSemaphores   = [imageAvailableSemaphore];
+    VkSemaphore[]     signalSemaphores = [renderFinishedSemaphore];
+    VkSwapchainKHR[]  swapChains       = [swapchain];
     VkSubmitInfo      submitInformation = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_SUBMIT_INFO,
         waitSemaphoreCount: 1,
         pWaitSemaphores:    waitSemaphores.ptr,
-        pWaitDstStageMask:  waitStages.ptr,
+        pWaitDstStageMask:  Default.waitStages.ptr,
         commandBufferCount: 1,
         signalSemaphoreCount: 1,
         pSignalSemaphores: signalSemaphores.ptr

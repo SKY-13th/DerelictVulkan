@@ -22,7 +22,7 @@ struct SDL2WMInfo {
 
 auto createWindow( in string        appName
                   , SDL_WindowFlags flags = SDL_WINDOW_SHOWN
-                  , uint[2]         size  = defaultWindowSize )
+                  , uint[2]         size  = Default.windowSize )
 {
     SDL2Window output = {
         window: SDL_CreateWindow( 
