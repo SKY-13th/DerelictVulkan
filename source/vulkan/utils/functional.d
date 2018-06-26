@@ -1,7 +1,7 @@
 module vulkan.utils.functional;
 
 import std.range
-     , std.algorithm.iteration
+     , std.algorithm
      , std.functional
      , std.traits
      , std.string
@@ -26,8 +26,11 @@ pure nothrow {
             }
             private bool _value = false;
         } else {
-            static if(isConstAble) { // Hack for FilterResult
-                bool opCast(A : bool)() inout { return !payload.empty; }
+            // Hack for FilterResult
+            // FilterResult has no `const`/`inout` implementaion of `empty` parameter
+            // So to answer is it empty it shoud execut deferred filtration process
+            static if(isConstAble) { 
+                bool opCast(A : bool)() const { return !payload.empty; }
             } else {
                 bool opCast(A : bool)() { return !payload.empty; }
             }
@@ -107,22 +110,7 @@ auto bind(alias F, T, Args...)(auto ref Maybe!T maybe, Args args) {
     return maybe ? F(maybe.payload, args).just : nothing!Result;
 }
 
-auto fallback(T)(auto ref Maybe!T maybe, auto ref T fBack) {
-    return maybe ? maybe.payload : fBack;
-}
-
-auto intersect(Range)( in Range left, in Range right ) pure
-if (isInputRange!(Unqual!Range)) {
-    import std.algorithm.searching : canFind;
-    return left.filter!(a => right.canFind(a)).array;
-}
-
-auto toCStrArray(Range)(Range data) pure
-if (isInputRange!(Unqual!Range)) {
-    return data.map!(a => toStringz(a)).array;
-}
-
-auto toStrArray(Range)(Range data) pure
-if (isInputRange!(Unqual!Range)) {
-    return data.map!(a => fromStringz(a.ptr).idup).array;
-}
+alias fallback    = (maybe, backup) => maybe ? maybe.payload : backup;
+alias intersect   = (left , right)  => left.filter!(a => right.canFind(a)).array;
+alias toCStrArray = data => data.map!(a => toStringz(a)).array;
+alias toStrArray  = data => data.map!(a => fromStringz(a.ptr).idup).array;

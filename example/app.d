@@ -37,9 +37,10 @@ void main() {
 
     ///////////////////////////////////////////////////////////////
     // Create Vulkan instance and pick Device
-    auto vulkan       = defaultAppInfo.initVulkan(extentions,layers);
+    auto vulkan  = defaultAppInfo.initVulkan(extentions,layers);
     scope(exit) vkDestroyInstance(vulkan, null);
-    auto surface      = vulkan.createSurface(sdlInfo);
+    auto surface = vulkan.createSurface(sdlInfo);
+    
     auto targetDevice = vulkan
         .bind!physicalDevices
         .bind!sortByScore
