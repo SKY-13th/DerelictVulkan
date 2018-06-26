@@ -1,0 +1,27 @@
+name        "derelict-vulkan"
+license     "BSL-1.0"
+description "A dynamic binding to the Vulkan API."
+copyright   "Copyright © 2016, Felix Hufnagel"
+authors     "Felix Hufnagel"
+targetPath  "bin"
+targetType  "library"
+dependency  "derelict-util" version=">=3.0.0-beta.2"
+
+subPackage {
+    name        "utils"
+    targetType  "library"
+    sourcePaths "./source/vulkan"
+    targetPath  "bin"
+    dependency  "derelict-vulkan" version="*"
+}
+
+subPackage {
+    name        "example"
+    description "Example program, draws triangle"
+    targetType  "executable"
+    sourcePaths "./example"
+    targetPath  "bin"
+    dependency  "derelict-vulkan"       version="*"
+    dependency  "derelict-vulkan:utils" version="*"
+    dependency  "derelict-sdl2"         version="~>3.1.0-alpha.4"
+}
