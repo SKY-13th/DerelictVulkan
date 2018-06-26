@@ -1,10 +1,8 @@
 module vulkanloader;
-public import vulkan.utils;
 public import derelict.vulkan;
+public import vulkan.utils;
 
-import std.algorithm.iteration
-     , std.algorithm.sorting
-     , std.algorithm.searching
+import std.algorithm
      , std.functional
      , std.string
      , std.conv
@@ -18,25 +16,8 @@ static this() {
     DerelictVulkan.load();
 }
 
-alias isSurfaceSupported    = (device, surface, queueFlag) =>
-    device.surfaceFormats(surface)
-        .bind!( _ => device.surfacePresentations(surface) )
-        .bind!((_) {
-            auto properties = device.queueFamilyProperties;
-            auto index      = properties.queueFamilyIndex(queueFlag);
-            return index < properties.length
-                && device.surfaceSupport(index, surface);
-        });
-
-alias hasNoPreferedFormat = formats => formats.length == 1
-    && formats.front.format == VkFormat.VK_FORMAT_UNDEFINED;
-
-alias hasSurfaceFormatSupport = (formats, desiredFormat) =>
-    formats.hasNoPreferedFormat || formats.canFind(desiredFormat)
-    ? desiredFormat : formats.front;
-
-alias sortByScore           = d => d.sort!((a,b) => a.score < b.score).array;
-alias score                 = (VkPhysicalDevice device) =>
+alias sortByScore = d => d.sort!((a,b) => a.score < b.score).array;
+alias score       = (VkPhysicalDevice device) =>
     device.queueFamilyProperties
         .bind!( q => q.queueFamilyIndex(VkQueueFlagBits.VK_QUEUE_GRAPHICS_BIT) )
         .bind!( _ => device.features.geometryShader 
@@ -47,8 +28,6 @@ alias score                 = (VkPhysicalDevice device) =>
             return properties.limits.maxImageDimension2D
                     + ( isDiscreteGPU ? 1000 : 0 );
         });
-
-alias queueFamilyIndex = (ques,queBit) => cast(uint)ques.countUntil!(q => q.queueCount > 0 && q.queueFlags & queBit);
 
 auto initVulkan( in ref VkApplicationInfo appInfo
                , in string[] extentionsList = []
@@ -88,10 +67,7 @@ auto createDevice( VkPhysicalDevice physicalDevice
     return physicalDevice.acquire!vkCreateDevice(&deviceInfo, null);
 }
 
-auto createSurface(VkInstance instance, SDL2WMInfo info) in {
-    assert(instance);
-    assert(info.isValid);
-} do {
+auto createSurface(VkInstance instance, SDL2WMInfo info) {
     VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
         hwnd:      info.info.win.window,
@@ -104,11 +80,8 @@ auto createSwapchain( VkDevice           device
                     , VkSurfaceKHR       surface
                     , VkSurfaceFormatKHR format
                     , VkPresentModeKHR   present
-                    , VkExtent2D         extent )
-in {
-    assert(device);
-    assert(surface);
-} do {
+                    , VkExtent2D         extent ) 
+{
     VkSwapchainCreateInfoKHR createInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         surface:     surface,
@@ -131,10 +104,7 @@ in {
 auto createImageView( VkDevice device
                     , VkImage image
                     , VkFormat format )
-in {
-    assert(device);
-    assert(image);
-} do {
+{
     VkImageViewCreateInfo createInfo = {
         sType:    VkStructureType.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         image:    image,
@@ -233,7 +203,7 @@ auto createPipeline( VkDevice         device
     return device.acquire!vkCreateGraphicsPipelines(null, 1, &pipelineInfo, null);
 }
 
-auto createPipelineLayout(VkDevice device){
+auto createPipelineLayout(VkDevice device) {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
     };
@@ -241,19 +211,16 @@ auto createPipelineLayout(VkDevice device){
     return device.acquire!vkCreatePipelineLayout(&pipelineLayoutInfo, null);
 }
 
-auto createRenderPass(VkDevice device, VkPipelineLayout pipeline, VkFormat format) in {
-    assert(device);
-    assert(pipeline);
-} do {
+auto createRenderPass(VkDevice device, VkPipelineLayout pipeline, VkFormat format) {
     VkAttachmentDescription colorAttachment = {
         format:  format,
         samples: VkSampleCountFlagBits.VK_SAMPLE_COUNT_1_BIT,
         loadOp:  VkAttachmentLoadOp.VK_ATTACHMENT_LOAD_OP_CLEAR,
         storeOp: VkAttachmentStoreOp.VK_ATTACHMENT_STORE_OP_STORE,
-        stencilLoadOp: VkAttachmentLoadOp.VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        stencilLoadOp:  VkAttachmentLoadOp.VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         stencilStoreOp: VkAttachmentStoreOp.VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        initialLayout: VkImageLayout.VK_IMAGE_LAYOUT_UNDEFINED,
-        finalLayout: VkImageLayout.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+        initialLayout:  VkImageLayout.VK_IMAGE_LAYOUT_UNDEFINED,
+        finalLayout:    VkImageLayout.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     };
     VkAttachmentReference colorAttachmentRef = {
         layout: VkImageLayout.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -266,8 +233,8 @@ auto createRenderPass(VkDevice device, VkPipelineLayout pipeline, VkFormat forma
     VkSubpassDependency dependency = {
         srcSubpass: VK_SUBPASS_EXTERNAL,
         dstSubpass: 0,
-        dstStageMask: VkPipelineStageFlagBits.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        srcStageMask: VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        dstStageMask:  VkPipelineStageFlagBits.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        srcStageMask:  VkPipelineStageFlagBits.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         srcAccessMask: VkAccessFlagBits.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT 
                      | VkAccessFlagBits.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
 
@@ -277,9 +244,9 @@ auto createRenderPass(VkDevice device, VkPipelineLayout pipeline, VkFormat forma
         attachmentCount: 1,
         pAttachments: &colorAttachment,
         subpassCount: 1,
-        pSubpasses: &subpass,
+        pSubpasses:   &subpass,
         dependencyCount: 1,
-        pDependencies: &dependency
+        pDependencies:   &dependency
     };
     return device.acquire!vkCreateRenderPass(&renderPassInfo, null);
 }
@@ -309,7 +276,6 @@ auto createCommandPool(VkDevice device, uint queueFamilyIndex){
 }
 
 auto createCommandBuffer(VkDevice device, VkCommandPool commandPool, ulong count) {
-    assert(count <= uint.max);
     VkCommandBufferAllocateInfo allocInfo = {
         sType: VkStructureType.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         commandPool: commandPool,
@@ -318,7 +284,6 @@ auto createCommandBuffer(VkDevice device, VkCommandPool commandPool, ulong count
     };
     VkCommandBuffer[] target = new VkCommandBuffer[count];
     return target.request!vkAllocateCommandBuffers(device, &allocInfo);
-
 }
 
 auto createSemaphore(VkDevice device){
