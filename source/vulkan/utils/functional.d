@@ -6,7 +6,6 @@ import std.range
      , std.traits
      , std.string
      , std.array;
-import derelict.vulkan;
 
 pure nothrow {
     private mixin template MaybeBase(T) {
@@ -45,11 +44,11 @@ pure nothrow {
     struct Maybe(T : bool)  { mixin MaybeBase!T; }
     struct Maybe(P : T*, T) { mixin MaybeBase!P; }
 
-
     auto  just(T)(T t) { return Maybe!T(t); }
     alias just(M: Maybe!T, T) = m => m;
 
     enum nothing(Type) = select!(isMaybe!Type)( Type.init, Maybe!Type.init);
+    
     enum isMaybe(Type) = false;
     enum isMaybe(M: Maybe!T, T) = true;
 }

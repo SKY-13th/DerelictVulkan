@@ -86,7 +86,7 @@ template enumerate(alias enumerator) {
     }
 }
 
-private auto commit(alias func, Args...)(Args args) {
+auto commit(alias func, Args...)(Args args) {
     alias ReturnT  = typeof(func(args));
     enum  isReturn = is( ReturnT == VkResult );
     static if(isReturn) {
@@ -95,4 +95,5 @@ private auto commit(alias func, Args...)(Args args) {
         vulkanResult = VkResult.VK_SUCCESS;
         func(args);
     }
+    return vulkanResult;
 }

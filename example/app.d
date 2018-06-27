@@ -200,18 +200,18 @@ void main() {
         swapchainCount: 1,
         pSwapchains: swapChains.ptr,
     };
-
+    
     (event) { device
         .acquireNextImage(swapchain, ulong.max, imageAvailableSemaphore, null)
         .bind!((imageIndex) {
             VkSubmitInfo submitInfo    = submitInformation;
             submitInfo.pCommandBuffers = &commandBuffs[imageIndex];
-            return vkQueueSubmit(graphQueue, 1, &submitInfo, null).just
+            return commit!vkQueueSubmit(graphQueue, 1, &submitInfo, null).just
                 .bind!( _ => imageIndex ); })
         .bind!((imageIndex) {
             VkPresentInfoKHR presentInfo = presentInformation;
             presentInfo.pImageIndices    = &imageIndex;
-            return vkQueuePresentKHR(graphQueue, &presentInfo); })
+            return commit!vkQueuePresentKHR(graphQueue, &presentInfo); })
         .expect!"Can't draw frame";
     }.eventLoop;
 }
